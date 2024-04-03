@@ -283,8 +283,8 @@ type FunctionCall struct {
 }
 
 type Tool struct {
-	Type     string         `json:"type"`
-	Function json.Marshaler `json:"function"`
+	Type     string   `json:"type"`
+	Function Function `json:"function"`
 }
 
 type Tools []*Tool
@@ -481,3 +481,59 @@ func tokenType(tok json.Token) string {
 	}
 	return "unknown"
 }
+
+// Function should be one of these types:
+//
+//  1. json.Marshaler, whose value must be a valid JSON object
+//  2. struct, who can be correctly serialized as a JSON object
+//  3. json.RawMessage, who holds a value of a valid JSON object
+//  4. map[string]any
+//
+// For convenience, it is recommended to directly use the DefFunction type.
+type Function any
+
+type DefFunction struct {
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Parameters  *DefProperty `json:"parameters"`
+}
+
+type DefProperty struct {
+	Type        string
+	Description string
+	Properties  DefProperties
+	Required    DefRequired
+	Items       DefItems
+
+	// ExtraDefs
+	// Other fields that comply with the JSON Schema definition can be
+	// added to ExtraDefs and submitted to the model together.
+	ExtraDefs Map[any]
+}
+
+func (dp DefProperty) MarshalJSON() ([]byte, error) {
+	props := make(map[string]any, 5+3)
+	props["type"] = dp.Type
+	if dp.Description != "" {
+		props["description"] = dp.Description
+	}
+	if dp.Properties != nil {
+		props["properties"] = dp.Properties
+	}
+	if dp.Required != nil {
+		props["required"] = dp.Required
+	}
+	if dp.Items != nil {
+		props["items"] = dp.Items
+	}
+	for k, v := range dp.ExtraDefs {
+		props[k] = v
+	}
+	return json.Marshal(props)
+}
+
+type (
+	DefProperties map[string]*DefProperty
+	DefRequired   []string
+	DefItems      []*DefProperty
+)

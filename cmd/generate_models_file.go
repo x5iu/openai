@@ -89,6 +89,16 @@ const (
 	PurposeAssistants = "assistants"
 )
 
+const (
+	DefPropertyTypeObject  = "object"
+	DefPropertyTypeArray   = "array"
+	DefPropertyTypeNull    = "null"
+	DefPropertyTypeString  = "string"
+	DefPropertyTypeNumber  = "number"
+	DefPropertyTypeInteger = "integer"
+	DefPropertyTypeBoolean = "boolean"
+)
+
 `)
 	fmt.Fprintf(&code, "const (\n")
 	sort.SliceStable(models.Data, func(i, j int) bool {

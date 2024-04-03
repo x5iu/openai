@@ -122,3 +122,74 @@ func testTokenType(token json.Token, expect string) func(*testing.T) {
 		}
 	}
 }
+
+func TestDefProperty(t *testing.T) {
+	const jsonProperty = `
+	{
+		"type": "array",
+		"description": "test_array",
+		"items": [
+			{
+				"type": "object",
+				"description": "test_object",
+				"properties": {
+					"test_int": {
+						"type": "integer",
+						"description": "test_int",
+						"maximum": 10
+					}
+				},
+				"required": ["test_int"]
+			}
+		]
+	}
+	`
+	defProperty := &DefProperty{
+		Type:        DefPropertyTypeArray,
+		Description: "test_array",
+		Items: DefItems{
+			&DefProperty{
+				Type:        DefPropertyTypeObject,
+				Description: "test_object",
+				Properties: DefProperties{
+					"test_int": &DefProperty{
+						Type:        DefPropertyTypeInteger,
+						Description: "test_int",
+						ExtraDefs: Map[any]{
+							"maximum": 10,
+						},
+					},
+				},
+				Required: DefRequired{"test_int"},
+			},
+		},
+	}
+	serializedDefProperty, err := json.MarshalIndent(defProperty, "", "    ")
+	if err != nil {
+		t.Errorf("DefProperty: %s", err)
+		return
+	}
+	var (
+		deserializedDefProperty  map[string]any
+		deserializedJSONProperty map[string]any
+	)
+	if err = json.Unmarshal(serializedDefProperty, &deserializedDefProperty); err != nil {
+		t.Errorf("DefProperty: %s", err)
+		return
+	}
+	if err = json.Unmarshal([]byte(jsonProperty), &deserializedJSONProperty); err != nil {
+		t.Errorf("DefProperty: %s", err)
+		return
+	}
+	if !reflect.DeepEqual(deserializedDefProperty, deserializedJSONProperty) {
+		t.Errorf(`DefProperty: 
+
+============================================================
+%s
+============================================================
+%s
+============================================================
+`, string(serializedDefProperty), jsonProperty)
+		return
+	}
+}

@@ -42,6 +42,16 @@ const (
 )
 
 const (
+	DefPropertyTypeObject  = "object"
+	DefPropertyTypeArray   = "array"
+	DefPropertyTypeNull    = "null"
+	DefPropertyTypeString  = "string"
+	DefPropertyTypeNumber  = "number"
+	DefPropertyTypeInteger = "integer"
+	DefPropertyTypeBoolean = "boolean"
+)
+
+const (
 	ModelBabbage002             = "babbage-002"
 	ModelDALLE2                 = "dall-e-2"
 	ModelDALLE3                 = "dall-e-3"
