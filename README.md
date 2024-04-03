@@ -13,3 +13,16 @@ OPENAI_BASE_URL=$YOUR_BASE_URL OPENAI_API_KEY=$YOUR_API_KEY go generate -run=gen
 ```
 
 It will call the `/models` endpoint to query the currently available models and update them as constants in the `constants.gen.go` file for use.
+
+## TODO
+
+Many interfaces are still incomplete and awaiting integration, as shown below:
+
+- [ ] Embedding
+- [ ] TTS
+- [ ] Whisper
+- [ ] Image
+- [x] File
+- [ ] Assistant
+- [ ] Fine-tuning
+- [ ] Moderation
