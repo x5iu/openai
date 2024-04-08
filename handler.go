@@ -32,6 +32,7 @@ func (r *ResponseHandler) ScanValues(values ...any) (err error) {
 	switch obj := val.(type) {
 	case *Stream:
 		if !isContentType(r.Response.Header, httpContentTypeSSE) {
+			r.Response.Body.Close()
 			return ErrNotEventStream
 		}
 		if r.Caller == CallerCreateChatCompletionStream {
