@@ -11,7 +11,7 @@ type Caller interface {
 	DeploymentID() string
 }
 
-//go:generate go run -mod=mod "github.com/x5iu/defc" --mode=api --output=client.gen.go --features=api/nort,api/logx,api/error,api/future,api/client --func trimTrailingSlash=openai.TrimTrailingSlash
+//go:generate go run -mod=mod github.com/x5iu/defc generate --features=api/nort,api/logx,api/error,api/future,api/client --func=trimTrailingSlash=openai.TrimTrailingSlash
 type Client[C Caller] interface {
 	/*
 		CreateChatCompletion POST {{ trimTrailingSlash $.Client.BaseUrl }}/openai\

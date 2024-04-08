@@ -21,7 +21,7 @@ type CustomHTTPClient interface {
 	Client() *http.Client
 }
 
-//go:generate go run -mod=mod "github.com/x5iu/defc" --mode=api --output=client.gen.go --features=api/nort,api/logx,api/error,api/future,api/client --func trimTrailingSlash=TrimTrailingSlash
+//go:generate go run -mod=mod github.com/x5iu/defc generate --features=api/nort,api/logx,api/error,api/future,api/client --func=trimTrailingSlash=TrimTrailingSlash
 type Client[C Caller] interface {
 	// ListModels GET {{ trimTrailingSlash $.Client.BaseUrl }}/models
 	// Authorization: Bearer {{ $.Client.APIKey }}
