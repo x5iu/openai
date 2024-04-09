@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+type ChatCompletion interface {
+	GetMessage() *Message
+}
+
 type Error struct {
 	Message string `json:"message"`
 	Type    string `json:"type"`
@@ -226,7 +230,7 @@ func (s *Stream) Close() error {
 	return s.Err()
 }
 
-func (s *Stream) CollectMessage() (message *Message) {
+func (s *Stream) GetMessage() (message *Message) {
 	var (
 		messageContentBuilder     strings.Builder
 		toolCallArgumentsBuilders []strings.Builder

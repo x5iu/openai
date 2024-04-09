@@ -1,19 +1,16 @@
 package openai
 
 import (
-	"encoding/json"
 	"errors"
+	defc "github.com/x5iu/defc/runtime"
 	"io"
 	"mime/multipart"
 	"runtime"
 	"sync"
 )
 
-type ToJSON interface {
-	ToJSON() (string, error)
-}
-
 type ChatCompletionRequest struct {
+	defc.JSONBody[ChatCompletionRequest]
 	Messages         Messages              `json:"messages"`
 	Model            string                `json:"model"`
 	FrequencyPenalty NullableType[float64] `json:"frequency_penalty,omitempty"`
@@ -26,6 +23,7 @@ type ChatCompletionRequest struct {
 	ResponseFormat   ResponseFormat        `json:"response_format,omitempty"`
 	Seed             int                   `json:"seed,omitempty"`
 	Stop             Stop                  `json:"stop,omitempty"`
+	Stream           bool                  `json:"stream,omitempty"`
 	Temperature      NullableType[float64] `json:"temperature,omitempty"`
 	TopP             NullableType[float64] `json:"top_p,omitempty"`
 	Tools            Tools                 `json:"tools,omitempty"`
@@ -33,41 +31,13 @@ type ChatCompletionRequest struct {
 	User             string                `json:"user,omitempty"`
 }
 
-func (r *ChatCompletionRequest) ToJSON() (string, error) {
-	return toJSON(r)
-}
-
-type ChatCompletionStreamRequest ChatCompletionRequest
-
-func (r *ChatCompletionStreamRequest) ToJSON() (string, error) {
-	type ChatCompletionStreamRequestWrapper struct {
-		*ChatCompletionStreamRequest
-		Stream bool `json:"stream"`
-	}
-	return toJSON(&ChatCompletionStreamRequestWrapper{
-		ChatCompletionStreamRequest: r,
-		Stream:                      true,
-	})
-}
-
 type CreateImageRequest struct {
+	defc.JSONBody[CreateImageRequest]
 	Model   string `json:"model"`
 	Prompt  string `json:"prompt"`
 	N       int    `json:"n,omitempty"`
 	Size    string `json:"size,omitempty"`
 	Quality string `json:"quality,omitempty"`
-}
-
-func (r *CreateImageRequest) ToJSON() (string, error) {
-	return toJSON(r)
-}
-
-func toJSON(obj any) (string, error) {
-	bytes, err := json.MarshalIndent(obj, "", "    ")
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
 }
 
 type UploadFileRequest struct {

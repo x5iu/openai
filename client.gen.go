@@ -4,25 +4,23 @@ package openai
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/textproto"
-	"reflect"
-	"sync"
 	"text/template"
 	"time"
+
+	__rt "github.com/x5iu/defc/runtime"
 )
 
 const (
-	CallerListModels                 = "ListModels"
-	CallerCreateChatCompletion       = "CreateChatCompletion"
-	CallerCreateChatCompletionStream = "CreateChatCompletionStream"
-	CallerCreateImage                = "CreateImage"
-	CallerUploadFile                 = "UploadFile"
-	CallerRetrieveFileContent        = "RetrieveFileContent"
+	CallerListModels           = "ListModels"
+	CallerCreateChatCompletion = "CreateChatCompletion"
+	CallerCreateImage          = "CreateImage"
+	CallerUploadFile           = "UploadFile"
+	CallerRetrieveFileContent  = "RetrieveFileContent"
 )
 
 func NewClient[C Caller](Client C) Client[C] {
@@ -34,36 +32,34 @@ type implClient[C Caller] struct {
 }
 
 var (
-	addrTmplListModels                   = template.Must(template.New("AddressListModels").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/models"))
-	headerTmplListModels                 = template.Must(template.New("HeaderListModels").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Authorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
-	addrTmplCreateChatCompletion         = template.Must(template.New("AddressCreateChatCompletion").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/chat/completions"))
-	headerTmplCreateChatCompletion       = template.Must(template.New("HeaderCreateChatCompletion").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n{{ $.request.ToJSON }}"))
-	addrTmplCreateChatCompletionStream   = template.Must(template.New("AddressCreateChatCompletionStream").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/chat/completions"))
-	headerTmplCreateChatCompletionStream = template.Must(template.New("HeaderCreateChatCompletionStream").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n{{ $.request.ToJSON }}"))
-	addrTmplCreateImage                  = template.Must(template.New("AddressCreateImage").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/images/generations"))
-	headerTmplCreateImage                = template.Must(template.New("HeaderCreateImage").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n{{ $.request.ToJSON }}"))
-	addrTmplUploadFile                   = template.Must(template.New("AddressUploadFile").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/files"))
-	headerTmplUploadFile                 = template.Must(template.New("HeaderUploadFile").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: {{ $.request.ContentType }}\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
-	addrTmplRetrieveFileContent          = template.Must(template.New("AddressRetrieveFileContent").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/files/{{ $.fileID }}/content"))
-	headerTmplRetrieveFileContent        = template.Must(template.New("HeaderRetrieveFileContent").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Authorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
+	addrTmplListModels             = template.Must(template.New("AddressListModels").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/models"))
+	headerTmplListModels           = template.Must(template.New("HeaderListModels").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Authorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
+	addrTmplCreateChatCompletion   = template.Must(template.New("AddressCreateChatCompletion").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/chat/completions"))
+	headerTmplCreateChatCompletion = template.Must(template.New("HeaderCreateChatCompletion").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
+	addrTmplCreateImage            = template.Must(template.New("AddressCreateImage").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/images/generations"))
+	headerTmplCreateImage          = template.Must(template.New("HeaderCreateImage").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
+	addrTmplUploadFile             = template.Must(template.New("AddressUploadFile").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/files"))
+	headerTmplUploadFile           = template.Must(template.New("HeaderUploadFile").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: {{ $.request.ContentType }}\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
+	addrTmplRetrieveFileContent    = template.Must(template.New("AddressRetrieveFileContent").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/files/{{ $.fileID }}/content"))
+	headerTmplRetrieveFileContent  = template.Must(template.New("HeaderRetrieveFileContent").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Authorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
 )
 
 func (__imp *implClient[C]) ListModels(ctx context.Context) (*Models, error) {
 	var innerListModels any = __imp.Inner()
 
-	addrListModels := __ClientGetBuffer()
-	defer __ClientPutBuffer(addrListModels)
+	addrListModels := __rt.GetBuffer()
+	defer __rt.PutBuffer(addrListModels)
 	defer addrListModels.Reset()
 
-	headerListModels := __ClientGetBuffer()
-	defer __ClientPutBuffer(headerListModels)
+	headerListModels := __rt.GetBuffer()
+	defer __rt.PutBuffer(headerListModels)
 	defer headerListModels.Reset()
 
 	var (
 		v0ListModels           = new(Models)
 		errListModels          error
 		httpResponseListModels *http.Response
-		responseListModels     ClientResponseInterface = __imp.response()
+		responseListModels     __rt.FutureResponse = __imp.response()
 	)
 
 	if errListModels = addrTmplListModels.Execute(addrListModels, map[string]any{
@@ -116,7 +112,7 @@ func (__imp *implClient[C]) ListModels(ctx context.Context) (*Models, error) {
 	}
 
 	if httpResponseListModels.StatusCode < 200 || httpResponseListModels.StatusCode > 299 {
-		return v0ListModels, __ClientNewResponseError("ListModels", httpResponseListModels)
+		return v0ListModels, __rt.NewFutureResponseError("ListModels", httpResponseListModels)
 	}
 
 	if errListModels = responseListModels.FromResponse("ListModels", httpResponseListModels); errListModels != nil {
@@ -137,22 +133,22 @@ func (__imp *implClient[C]) ListModels(ctx context.Context) (*Models, error) {
 	return v0ListModels, nil
 }
 
-func (__imp *implClient[C]) CreateChatCompletion(ctx context.Context, request *ChatCompletionRequest) (*Completion, error) {
+func (__imp *implClient[C]) CreateChatCompletion(ctx context.Context, request *ChatCompletionRequest) (ChatCompletion, error) {
 	var innerCreateChatCompletion any = __imp.Inner()
 
-	addrCreateChatCompletion := __ClientGetBuffer()
-	defer __ClientPutBuffer(addrCreateChatCompletion)
+	addrCreateChatCompletion := __rt.GetBuffer()
+	defer __rt.PutBuffer(addrCreateChatCompletion)
 	defer addrCreateChatCompletion.Reset()
 
-	headerCreateChatCompletion := __ClientGetBuffer()
-	defer __ClientPutBuffer(headerCreateChatCompletion)
+	headerCreateChatCompletion := __rt.GetBuffer()
+	defer __rt.PutBuffer(headerCreateChatCompletion)
 	defer headerCreateChatCompletion.Reset()
 
 	var (
-		v0CreateChatCompletion           = new(Completion)
+		v0CreateChatCompletion           = __rt.New[ChatCompletion]()
 		errCreateChatCompletion          error
 		httpResponseCreateChatCompletion *http.Response
-		responseCreateChatCompletion     ClientResponseInterface = __imp.response()
+		responseCreateChatCompletion     __rt.FutureResponse = __imp.response()
 	)
 
 	if errCreateChatCompletion = addrTmplCreateChatCompletion.Execute(addrCreateChatCompletion, map[string]any{
@@ -177,11 +173,7 @@ func (__imp *implClient[C]) CreateChatCompletion(ctx context.Context, request *C
 	}
 
 	urlCreateChatCompletion := addrCreateChatCompletion.String()
-	requestBodyCreateChatCompletion, errCreateChatCompletion := io.ReadAll(bufReaderCreateChatCompletion)
-	if errCreateChatCompletion != nil {
-		return v0CreateChatCompletion, fmt.Errorf("error reading 'CreateChatCompletion' request body: %w", errCreateChatCompletion)
-	}
-	requestCreateChatCompletion, errCreateChatCompletion := http.NewRequestWithContext(ctx, "POST", urlCreateChatCompletion, bytes.NewReader(requestBodyCreateChatCompletion))
+	requestCreateChatCompletion, errCreateChatCompletion := http.NewRequestWithContext(ctx, "POST", urlCreateChatCompletion, request)
 	if errCreateChatCompletion != nil {
 		return v0CreateChatCompletion, fmt.Errorf("error building 'CreateChatCompletion' request: %w", errCreateChatCompletion)
 	}
@@ -211,7 +203,7 @@ func (__imp *implClient[C]) CreateChatCompletion(ctx context.Context, request *C
 	}
 
 	if httpResponseCreateChatCompletion.StatusCode < 200 || httpResponseCreateChatCompletion.StatusCode > 299 {
-		return v0CreateChatCompletion, __ClientNewResponseError("CreateChatCompletion", httpResponseCreateChatCompletion)
+		return v0CreateChatCompletion, __rt.NewFutureResponseError("CreateChatCompletion", httpResponseCreateChatCompletion)
 	}
 
 	if errCreateChatCompletion = responseCreateChatCompletion.FromResponse("CreateChatCompletion", httpResponseCreateChatCompletion); errCreateChatCompletion != nil {
@@ -225,124 +217,29 @@ func (__imp *implClient[C]) CreateChatCompletion(ctx context.Context, request *C
 		return v0CreateChatCompletion, fmt.Errorf("error returned from 'CreateChatCompletion' response: %w", errCreateChatCompletion)
 	}
 
-	if errCreateChatCompletion = responseCreateChatCompletion.ScanValues(v0CreateChatCompletion); errCreateChatCompletion != nil {
+	if errCreateChatCompletion = responseCreateChatCompletion.ScanValues(&v0CreateChatCompletion); errCreateChatCompletion != nil {
 		return v0CreateChatCompletion, fmt.Errorf("error scanning value from 'CreateChatCompletion' response: %w", errCreateChatCompletion)
 	}
 
 	return v0CreateChatCompletion, nil
 }
 
-func (__imp *implClient[C]) CreateChatCompletionStream(ctx context.Context, request *ChatCompletionStreamRequest) (*Stream, error) {
-	var innerCreateChatCompletionStream any = __imp.Inner()
-
-	addrCreateChatCompletionStream := __ClientGetBuffer()
-	defer __ClientPutBuffer(addrCreateChatCompletionStream)
-	defer addrCreateChatCompletionStream.Reset()
-
-	headerCreateChatCompletionStream := __ClientGetBuffer()
-	defer __ClientPutBuffer(headerCreateChatCompletionStream)
-	defer headerCreateChatCompletionStream.Reset()
-
-	var (
-		v0CreateChatCompletionStream           = new(Stream)
-		errCreateChatCompletionStream          error
-		httpResponseCreateChatCompletionStream *http.Response
-		responseCreateChatCompletionStream     ClientResponseInterface = __imp.response()
-	)
-
-	if errCreateChatCompletionStream = addrTmplCreateChatCompletionStream.Execute(addrCreateChatCompletionStream, map[string]any{
-		"Client":  __imp.Inner(),
-		"ctx":     ctx,
-		"request": request,
-	}); errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error building 'CreateChatCompletionStream' url: %w", errCreateChatCompletionStream)
-	}
-
-	if errCreateChatCompletionStream = headerTmplCreateChatCompletionStream.Execute(headerCreateChatCompletionStream, map[string]any{
-		"Client":  __imp.Inner(),
-		"ctx":     ctx,
-		"request": request,
-	}); errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error building 'CreateChatCompletionStream' header: %w", errCreateChatCompletionStream)
-	}
-	bufReaderCreateChatCompletionStream := bufio.NewReader(headerCreateChatCompletionStream)
-	mimeHeaderCreateChatCompletionStream, errCreateChatCompletionStream := textproto.NewReader(bufReaderCreateChatCompletionStream).ReadMIMEHeader()
-	if errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error reading 'CreateChatCompletionStream' header: %w", errCreateChatCompletionStream)
-	}
-
-	urlCreateChatCompletionStream := addrCreateChatCompletionStream.String()
-	requestBodyCreateChatCompletionStream, errCreateChatCompletionStream := io.ReadAll(bufReaderCreateChatCompletionStream)
-	if errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error reading 'CreateChatCompletionStream' request body: %w", errCreateChatCompletionStream)
-	}
-	requestCreateChatCompletionStream, errCreateChatCompletionStream := http.NewRequestWithContext(ctx, "POST", urlCreateChatCompletionStream, bytes.NewReader(requestBodyCreateChatCompletionStream))
-	if errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error building 'CreateChatCompletionStream' request: %w", errCreateChatCompletionStream)
-	}
-
-	for kCreateChatCompletionStream, vvCreateChatCompletionStream := range mimeHeaderCreateChatCompletionStream {
-		for _, vCreateChatCompletionStream := range vvCreateChatCompletionStream {
-			requestCreateChatCompletionStream.Header.Add(kCreateChatCompletionStream, vCreateChatCompletionStream)
-		}
-	}
-
-	startCreateChatCompletionStream := time.Now()
-
-	if httpClientCreateChatCompletionStream, okCreateChatCompletionStream := innerCreateChatCompletionStream.(interface{ Client() *http.Client }); okCreateChatCompletionStream {
-		httpResponseCreateChatCompletionStream, errCreateChatCompletionStream = httpClientCreateChatCompletionStream.Client().Do(requestCreateChatCompletionStream)
-	} else {
-		httpResponseCreateChatCompletionStream, errCreateChatCompletionStream = http.DefaultClient.Do(requestCreateChatCompletionStream)
-	}
-
-	if logCreateChatCompletionStream, okCreateChatCompletionStream := innerCreateChatCompletionStream.(interface {
-		Log(ctx context.Context, caller string, request *http.Request, response *http.Response, elapse time.Duration)
-	}); okCreateChatCompletionStream {
-		logCreateChatCompletionStream.Log(ctx, "CreateChatCompletionStream", requestCreateChatCompletionStream, httpResponseCreateChatCompletionStream, time.Since(startCreateChatCompletionStream))
-	}
-
-	if errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error sending 'CreateChatCompletionStream' request: %w", errCreateChatCompletionStream)
-	}
-
-	if httpResponseCreateChatCompletionStream.StatusCode < 200 || httpResponseCreateChatCompletionStream.StatusCode > 299 {
-		return v0CreateChatCompletionStream, __ClientNewResponseError("CreateChatCompletionStream", httpResponseCreateChatCompletionStream)
-	}
-
-	if errCreateChatCompletionStream = responseCreateChatCompletionStream.FromResponse("CreateChatCompletionStream", httpResponseCreateChatCompletionStream); errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error converting 'CreateChatCompletionStream' response: %w", errCreateChatCompletionStream)
-	}
-
-	addrCreateChatCompletionStream.Reset()
-	headerCreateChatCompletionStream.Reset()
-
-	if errCreateChatCompletionStream = responseCreateChatCompletionStream.Err(); errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error returned from 'CreateChatCompletionStream' response: %w", errCreateChatCompletionStream)
-	}
-
-	if errCreateChatCompletionStream = responseCreateChatCompletionStream.ScanValues(v0CreateChatCompletionStream); errCreateChatCompletionStream != nil {
-		return v0CreateChatCompletionStream, fmt.Errorf("error scanning value from 'CreateChatCompletionStream' response: %w", errCreateChatCompletionStream)
-	}
-
-	return v0CreateChatCompletionStream, nil
-}
-
 func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImageRequest) (*Image, error) {
 	var innerCreateImage any = __imp.Inner()
 
-	addrCreateImage := __ClientGetBuffer()
-	defer __ClientPutBuffer(addrCreateImage)
+	addrCreateImage := __rt.GetBuffer()
+	defer __rt.PutBuffer(addrCreateImage)
 	defer addrCreateImage.Reset()
 
-	headerCreateImage := __ClientGetBuffer()
-	defer __ClientPutBuffer(headerCreateImage)
+	headerCreateImage := __rt.GetBuffer()
+	defer __rt.PutBuffer(headerCreateImage)
 	defer headerCreateImage.Reset()
 
 	var (
 		v0CreateImage           = new(Image)
 		errCreateImage          error
 		httpResponseCreateImage *http.Response
-		responseCreateImage     ClientResponseInterface = __imp.response()
+		responseCreateImage     __rt.FutureResponse = __imp.response()
 	)
 
 	if errCreateImage = addrTmplCreateImage.Execute(addrCreateImage, map[string]any{
@@ -367,11 +264,7 @@ func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImag
 	}
 
 	urlCreateImage := addrCreateImage.String()
-	requestBodyCreateImage, errCreateImage := io.ReadAll(bufReaderCreateImage)
-	if errCreateImage != nil {
-		return v0CreateImage, fmt.Errorf("error reading 'CreateImage' request body: %w", errCreateImage)
-	}
-	requestCreateImage, errCreateImage := http.NewRequestWithContext(ctx, "POST", urlCreateImage, bytes.NewReader(requestBodyCreateImage))
+	requestCreateImage, errCreateImage := http.NewRequestWithContext(ctx, "POST", urlCreateImage, request)
 	if errCreateImage != nil {
 		return v0CreateImage, fmt.Errorf("error building 'CreateImage' request: %w", errCreateImage)
 	}
@@ -401,7 +294,7 @@ func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImag
 	}
 
 	if httpResponseCreateImage.StatusCode < 200 || httpResponseCreateImage.StatusCode > 299 {
-		return v0CreateImage, __ClientNewResponseError("CreateImage", httpResponseCreateImage)
+		return v0CreateImage, __rt.NewFutureResponseError("CreateImage", httpResponseCreateImage)
 	}
 
 	if errCreateImage = responseCreateImage.FromResponse("CreateImage", httpResponseCreateImage); errCreateImage != nil {
@@ -425,19 +318,19 @@ func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImag
 func (__imp *implClient[C]) UploadFile(ctx context.Context, request *UploadFileRequest) (*File, error) {
 	var innerUploadFile any = __imp.Inner()
 
-	addrUploadFile := __ClientGetBuffer()
-	defer __ClientPutBuffer(addrUploadFile)
+	addrUploadFile := __rt.GetBuffer()
+	defer __rt.PutBuffer(addrUploadFile)
 	defer addrUploadFile.Reset()
 
-	headerUploadFile := __ClientGetBuffer()
-	defer __ClientPutBuffer(headerUploadFile)
+	headerUploadFile := __rt.GetBuffer()
+	defer __rt.PutBuffer(headerUploadFile)
 	defer headerUploadFile.Reset()
 
 	var (
 		v0UploadFile           = new(File)
 		errUploadFile          error
 		httpResponseUploadFile *http.Response
-		responseUploadFile     ClientResponseInterface = __imp.response()
+		responseUploadFile     __rt.FutureResponse = __imp.response()
 	)
 
 	if errUploadFile = addrTmplUploadFile.Execute(addrUploadFile, map[string]any{
@@ -492,7 +385,7 @@ func (__imp *implClient[C]) UploadFile(ctx context.Context, request *UploadFileR
 	}
 
 	if httpResponseUploadFile.StatusCode < 200 || httpResponseUploadFile.StatusCode > 299 {
-		return v0UploadFile, __ClientNewResponseError("UploadFile", httpResponseUploadFile)
+		return v0UploadFile, __rt.NewFutureResponseError("UploadFile", httpResponseUploadFile)
 	}
 
 	if errUploadFile = responseUploadFile.FromResponse("UploadFile", httpResponseUploadFile); errUploadFile != nil {
@@ -516,20 +409,20 @@ func (__imp *implClient[C]) UploadFile(ctx context.Context, request *UploadFileR
 func (__imp *implClient[C]) RetrieveFileContent(ctx context.Context, fileID string) (io.ReadCloser, string, error) {
 	var innerRetrieveFileContent any = __imp.Inner()
 
-	addrRetrieveFileContent := __ClientGetBuffer()
-	defer __ClientPutBuffer(addrRetrieveFileContent)
+	addrRetrieveFileContent := __rt.GetBuffer()
+	defer __rt.PutBuffer(addrRetrieveFileContent)
 	defer addrRetrieveFileContent.Reset()
 
-	headerRetrieveFileContent := __ClientGetBuffer()
-	defer __ClientPutBuffer(headerRetrieveFileContent)
+	headerRetrieveFileContent := __rt.GetBuffer()
+	defer __rt.PutBuffer(headerRetrieveFileContent)
 	defer headerRetrieveFileContent.Reset()
 
 	var (
-		v0RetrieveFileContent           = __ClientNew[io.ReadCloser]()
-		v1RetrieveFileContent           = __ClientNew[string]()
+		v0RetrieveFileContent           = __rt.New[io.ReadCloser]()
+		v1RetrieveFileContent           = __rt.New[string]()
 		errRetrieveFileContent          error
 		httpResponseRetrieveFileContent *http.Response
-		responseRetrieveFileContent     ClientResponseInterface = __imp.response()
+		responseRetrieveFileContent     __rt.FutureResponse = __imp.response()
 	)
 
 	if errRetrieveFileContent = addrTmplRetrieveFileContent.Execute(addrRetrieveFileContent, map[string]any{
@@ -584,7 +477,7 @@ func (__imp *implClient[C]) RetrieveFileContent(ctx context.Context, fileID stri
 	}
 
 	if httpResponseRetrieveFileContent.StatusCode < 200 || httpResponseRetrieveFileContent.StatusCode > 299 {
-		return v0RetrieveFileContent, v1RetrieveFileContent, __ClientNewResponseError("RetrieveFileContent", httpResponseRetrieveFileContent)
+		return v0RetrieveFileContent, v1RetrieveFileContent, __rt.NewFutureResponseError("RetrieveFileContent", httpResponseRetrieveFileContent)
 	}
 
 	if errRetrieveFileContent = responseRetrieveFileContent.FromResponse("RetrieveFileContent", httpResponseRetrieveFileContent); errRetrieveFileContent != nil {
@@ -611,86 +504,4 @@ func (__imp *implClient[C]) Inner() C {
 
 func (*implClient[C]) response() *ResponseHandler {
 	return new(ResponseHandler)
-}
-
-var __ClientBufferPool = sync.Pool{
-	New: func() any {
-		return new(bytes.Buffer)
-	},
-}
-
-func __ClientGetBuffer() *bytes.Buffer {
-	return __ClientBufferPool.Get().(*bytes.Buffer)
-}
-
-func __ClientPutBuffer(buffer *bytes.Buffer) {
-	__ClientBufferPool.Put(buffer)
-}
-
-type ClientResponseInterface interface {
-	Err() error
-	ScanValues(...any) error
-	FromResponse(string, *http.Response) error
-	Break() bool
-}
-
-func __ClientNewType(typ reflect.Type) reflect.Value {
-	switch typ.Kind() {
-	case reflect.Slice:
-		return reflect.MakeSlice(typ, 0, 0)
-	case reflect.Map:
-		return reflect.MakeMap(typ)
-	case reflect.Chan:
-		return reflect.MakeChan(typ, 0)
-	case reflect.Func:
-		return reflect.MakeFunc(typ, func(_ []reflect.Value) (results []reflect.Value) {
-			results = make([]reflect.Value, typ.NumOut())
-			for i := 0; i < typ.NumOut(); i++ {
-				results[i] = __ClientNewType(typ.Out(i))
-			}
-			return results
-		})
-	case reflect.Pointer:
-		return reflect.New(typ.Elem())
-	default:
-		return reflect.Zero(typ)
-	}
-}
-
-func __ClientNew[T any]() (v T) {
-	val := reflect.ValueOf(&v).Elem()
-	switch val.Kind() {
-	case reflect.Slice, reflect.Map, reflect.Chan, reflect.Func, reflect.Pointer:
-		val.Set(__ClientNewType(val.Type()))
-	}
-	return v
-}
-
-// ClientResponseErrorInterface represents future Response error interface which would
-// be used in next major version of defc, who may cause breaking changes.
-//
-// generated with --features=api/future
-type ClientResponseErrorInterface interface {
-	error
-	Response() *http.Response
-}
-
-func __ClientNewResponseError(caller string, response *http.Response) ClientResponseErrorInterface {
-	return &__ClientImplResponseError{
-		caller:   caller,
-		response: response,
-	}
-}
-
-type __ClientImplResponseError struct {
-	caller   string
-	response *http.Response
-}
-
-func (e *__ClientImplResponseError) Error() string {
-	return fmt.Sprintf("response status code %d for '%s'", e.response.StatusCode, e.caller)
-}
-
-func (e *__ClientImplResponseError) Response() *http.Response {
-	return e.response
 }
