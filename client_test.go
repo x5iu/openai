@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -87,7 +86,7 @@ func newTestServer() *httptest.Server {
 			},
 			invalidStreamTypeKey: {
 				StatusCode:   200,
-				ContentType:  "application/json",
+				ContentType:  "text/plain",
 				ResponseBody: "data: [DONE]",
 			},
 			invalidStreamContentKey: {
@@ -106,7 +105,7 @@ func newTestServer() *httptest.Server {
 				Index        NullableType[int]    `json:"index"`
 				Message      *Message             `json:"message"`
 				FinishReason NullableType[string] `json:"finish_reason"`
-				LogProbs     json.RawMessage      `json:"logprobs"`
+				Logprobs     json.RawMessage      `json:"logprobs"`
 			}{
 				{
 					Index: "0",
@@ -116,7 +115,7 @@ func newTestServer() *httptest.Server {
 						ToolCalls: nil,
 					},
 					FinishReason: "stop",
-					LogProbs:     nil,
+					Logprobs:     nil,
 				},
 			},
 			Usage: struct {
@@ -418,7 +417,7 @@ func testClientModels(t *testing.T) {
 func testClientChat(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := newClient(testKey)
-		completion, err := client.CreateChatCompletion(context.Background(), &ChatCompletionRequest{
+		chatCompletion, err := client.CreateChatCompletion(context.Background(), &ChatCompletionRequest{
 			Messages: Messages{
 				{
 					Role:    RoleUser,
@@ -431,6 +430,7 @@ func testClientChat(t *testing.T) {
 			t.Errorf("client.CreateChatCompletion: %s", err)
 			return
 		}
+		completion := chatCompletion.(*Completion)
 		if completion.Model != "gpt-3.5-turbo" || len(completion.Choices) != 1 ||
 			completion.GetFinishReason() != FinishReasonStop || completion.GetMessageRole() != RoleAssistant ||
 			completion.GetMessageContent() != "hi" || completion.GetPromptTokens() != 10 ||
@@ -443,7 +443,7 @@ func testClientChat(t *testing.T) {
 		t.Run("stream", func(t *testing.T) {
 			t.Run("stop", func(t *testing.T) {
 				streamClient := newClient(streamStopKey)
-				stream, err := streamClient.CreateChatCompletionStream(context.Background(), &ChatCompletionStreamRequest{
+				chatCompletion, err := streamClient.CreateChatCompletion(context.Background(), &ChatCompletionRequest{
 					Messages: Messages{
 						{
 							Role:    RoleUser,
@@ -453,13 +453,15 @@ func testClientChat(t *testing.T) {
 					Model:          "gpt-3.5-turbo",
 					ToolChoice:     "test",
 					ResponseFormat: ResponseFormatText,
+					Stream:         true,
 				})
 				if err != nil {
 					t.Errorf("streamClient.CreateChatCompletionStream: %s", err)
 					return
 				}
+				stream := chatCompletion.(*Stream)
 				defer stream.Close()
-				message := stream.CollectMessage()
+				message := stream.GetMessage()
 				if streamErr := stream.Err(); streamErr != nil {
 					t.Errorf("stream.Err(): %s", streamErr)
 					return
@@ -474,7 +476,7 @@ func testClientChat(t *testing.T) {
 			})
 			t.Run("done", func(t *testing.T) {
 				streamClient := newClient(streamDoneKey)
-				stream, err := streamClient.CreateChatCompletionStream(context.Background(), &ChatCompletionStreamRequest{
+				chatCompletion, err := streamClient.CreateChatCompletion(context.Background(), &ChatCompletionRequest{
 					Messages: Messages{
 						{
 							Role:    RoleUser,
@@ -484,13 +486,15 @@ func testClientChat(t *testing.T) {
 					Model:          "gpt-3.5-turbo",
 					ToolChoice:     "test",
 					ResponseFormat: ResponseFormatText,
+					Stream:         true,
 				})
 				if err != nil {
 					t.Errorf("streamClient.CreateChatCompletionStream: %s", err)
 					return
 				}
+				stream := chatCompletion.(*Stream)
 				defer stream.Close()
-				message := stream.CollectMessage()
+				message := stream.GetMessage()
 				if streamErr := stream.Err(); streamErr != nil {
 					t.Errorf("stream.Err(): %s", streamErr)
 					return
@@ -506,45 +510,48 @@ func testClientChat(t *testing.T) {
 			t.Run("error", func(t *testing.T) {
 				t.Run("type", func(t *testing.T) {
 					invalidStreamClient := newClient(invalidStreamTypeKey)
-					_, streamErr := invalidStreamClient.CreateChatCompletionStream(context.Background(), &ChatCompletionStreamRequest{
+					_, streamErr := invalidStreamClient.CreateChatCompletion(context.Background(), &ChatCompletionRequest{
 						Messages: Messages{
 							{
 								Role:    RoleUser,
 								Content: &Content{Text: "hi"},
 							},
 						},
-						Model: "gpt-3.5-turbo",
+						Model:  "gpt-3.5-turbo",
+						Stream: true,
 					})
 					if streamErr == nil {
 						t.Errorf("invalidStreamClient.CreateChatCompletionStream: expects errors, got nothing")
 						return
 					}
-					if !errors.Is(streamErr, ErrNotEventStream) {
-						t.Errorf("streamErr != ErrNotEventStream => %s", streamErr)
+					if !strings.Contains(streamErr.Error(), "unresolved Content-Type: ") {
+						t.Errorf("streamErr != UnresolvedContentType => %s", streamErr)
 						return
 					}
 				})
 				t.Run("content", func(t *testing.T) {
 					invalidStreamClient := newClient(invalidStreamContentKey)
-					stream, streamErr := invalidStreamClient.CreateChatCompletionStream(context.Background(), &ChatCompletionStreamRequest{
+					chatCompletion, streamErr := invalidStreamClient.CreateChatCompletion(context.Background(), &ChatCompletionRequest{
 						Messages: Messages{
 							{
 								Role:    RoleUser,
 								Content: &Content{Text: "hi"},
 							},
 						},
-						Model: "gpt-3.5-turbo",
+						Model:  "gpt-3.5-turbo",
+						Stream: true,
 					})
 					if streamErr != nil {
 						t.Errorf("invalidStreamClient.CreateChatCompletionStream: %s", streamErr)
 						return
 					}
+					stream := chatCompletion.(*Stream)
 					defer stream.Close()
 					if streamErr = stream.Err(); streamErr != nil {
 						t.Errorf("stream.Err(): %s", streamErr)
 						return
 					}
-					stream.CollectMessage()
+					stream.GetMessage()
 					if streamErr = stream.Err(); streamErr == nil {
 						t.Errorf("stream.Err() expects errors, got nothing")
 						return
@@ -619,11 +626,4 @@ func testClientFile(t *testing.T) {
 			return
 		}
 	})
-}
-
-func TestGenericNew(t *testing.T) {
-	if __ClientNew[*ResponseHandler]() == nil {
-		t.Errorf("__ClientNew[*ResponseHandler]() got nil value")
-		return
-	}
 }

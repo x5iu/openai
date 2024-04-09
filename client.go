@@ -21,7 +21,7 @@ type CustomHTTPClient interface {
 	Client() *http.Client
 }
 
-//go:generate go run -mod=mod github.com/x5iu/defc generate --features=api/nort,api/logx,api/error,api/future,api/client --func=trimTrailingSlash=TrimTrailingSlash
+//go:generate go run -mod=mod github.com/x5iu/defc generate --features=api/logx,api/error,api/future,api/client --func=trimTrailingSlash=TrimTrailingSlash
 type Client[C Caller] interface {
 	// ListModels GET {{ trimTrailingSlash $.Client.BaseUrl }}/models
 	// Authorization: Bearer {{ $.Client.APIKey }}
@@ -30,22 +30,11 @@ type Client[C Caller] interface {
 	// CreateChatCompletion POST {{ trimTrailingSlash $.Client.BaseUrl }}/chat/completions
 	// Content-Type: application/json
 	// Authorization: Bearer {{ $.Client.APIKey }}
-	//
-	// {{ $.request.ToJSON }}
-	CreateChatCompletion(ctx context.Context, request *ChatCompletionRequest) (*Completion, error)
-
-	// CreateChatCompletionStream POST {{ trimTrailingSlash $.Client.BaseUrl }}/chat/completions
-	// Content-Type: application/json
-	// Authorization: Bearer {{ $.Client.APIKey }}
-	//
-	// {{ $.request.ToJSON }}
-	CreateChatCompletionStream(ctx context.Context, request *ChatCompletionStreamRequest) (*Stream, error)
+	CreateChatCompletion(ctx context.Context, request *ChatCompletionRequest) (ChatCompletion, error)
 
 	// CreateImage POST {{ trimTrailingSlash $.Client.BaseUrl }}/images/generations
 	// Content-Type: application/json
 	// Authorization: Bearer {{ $.Client.APIKey }}
-	//
-	// {{ $.request.ToJSON }}
 	CreateImage(ctx context.Context, request *CreateImageRequest) (*Image, error)
 
 	// UploadFile POST {{ trimTrailingSlash $.Client.BaseUrl }}/files

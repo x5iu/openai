@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+type ChatCompletion interface {
+	GetMessage() *Message
+}
+
 type Error struct {
 	Message string `json:"message"`
 	Type    string `json:"type"`
@@ -94,7 +98,7 @@ type Completion struct {
 		Index        NullableType[int]    `json:"index"`
 		Message      *Message             `json:"message"`
 		FinishReason NullableType[string] `json:"finish_reason"`
-		LogProbs     json.RawMessage      `json:"logprobs"`
+		Logprobs     json.RawMessage      `json:"logprobs"`
 	} `json:"choices"`
 	Usage struct {
 		PromptTokens     int `json:"prompt_tokens"`
@@ -158,7 +162,7 @@ type Chunk struct {
 		Index        NullableType[int]    `json:"index"`
 		Delta        *Message             `json:"delta"`
 		FinishReason NullableType[string] `json:"finish_reason"`
-		LogProbs     json.RawMessage      `json:"logprobs"`
+		Logprobs     json.RawMessage      `json:"logprobs"`
 	} `json:"choices"`
 }
 
@@ -226,7 +230,7 @@ func (s *Stream) Close() error {
 	return s.Err()
 }
 
-func (s *Stream) CollectMessage() (message *Message) {
+func (s *Stream) GetMessage() (message *Message) {
 	var (
 		messageContentBuilder     strings.Builder
 		toolCallArgumentsBuilders []strings.Builder

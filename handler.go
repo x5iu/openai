@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,26 +21,28 @@ func (r *ResponseHandler) FromResponse(caller string, response *http.Response) (
 	return nil
 }
 
-var ErrNotEventStream = errors.New("openai: response Content-Type is not " + httpContentTypeSSE + " while Stream=true")
-
 func (r *ResponseHandler) ScanValues(values ...any) (err error) {
 	if len(values) == 0 {
 		return nil
 	}
 	val := values[0]
 	switch obj := val.(type) {
-	case *Stream:
-		if !isContentType(r.Response.Header, httpContentTypeSSE) {
-			r.Response.Body.Close()
-			return ErrNotEventStream
-		}
-		if r.Caller == CallerCreateChatCompletionStream {
-			ch := make(chan *Chunk)
-			ec := make(chan error, 1)
-			obj.C = ch
-			obj.error = ec
-			go readStream(r.Response.Body, ch, ec)
-			return nil
+	case *ChatCompletion:
+		if r.Caller == CallerCreateChatCompletion {
+			if isContentType(r.Response.Header, httpContentTypeSSE) {
+				ch := make(chan *Chunk)
+				ec := make(chan error, 1)
+				*obj = &Stream{C: ch, error: ec}
+				go readStream(r.Response.Body, ch, ec)
+				return nil
+			} else if isContentType(r.Response.Header, httpContentTypeJSON) {
+				defer r.Response.Body.Close()
+				var completion Completion
+				*obj = &completion
+				return json.NewDecoder(r.Response.Body).Decode(&completion)
+			} else {
+				return fmt.Errorf("unresolved Content-Type: %s", r.Response.Header.Get("Content-Type"))
+			}
 		}
 	case *io.ReadCloser:
 		switch r.Caller {
