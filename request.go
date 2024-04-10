@@ -1,11 +1,14 @@
 package openai
 
 import (
-	"errors"
+	"bytes"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	defc "github.com/x5iu/defc/runtime"
 	"io"
-	"mime/multipart"
-	"runtime"
+	"net/textproto"
+	"strings"
 	"sync"
 )
 
@@ -41,111 +44,120 @@ type CreateImageRequest struct {
 }
 
 type UploadFileRequest struct {
-	File     io.Reader
-	Filename string
-	Purpose  string
+	File    UploadFile
+	Purpose string
 
-	once        sync.Once
-	reader      *io.PipeReader
-	errorChan   <-chan error
-	contentType string
-}
-
-func (r *UploadFileRequest) init() {
-	r.once.Do(func() {
-		const (
-			formFieldPurpose = "purpose"
-			formFieldFile    = "file"
-		)
-
-		var (
-			err                    error
-			pipeReader, pipeWriter = io.Pipe()
-			writer                 = multipart.NewWriter(pipeWriter)
-			errorChan              = make(chan error, 1)
-		)
-
-		r.reader = pipeReader
-		r.contentType = writer.FormDataContentType()
-		r.errorChan = errorChan
-
-		// To prevent goroutine leaks, utilize the SetFinalizer function to tidy up the Producer-side goroutine
-		// upon the completion of the UploadFileRequest lifecycle.
-		runtime.SetFinalizer(r, func(*UploadFileRequest) { pipeReader.Close() })
-
-		go func() {
-			defer func(ch chan<- error) {
-				if err != nil {
-					if !errors.Is(err, io.ErrClosedPipe) {
-						ch <- err
-					}
-				}
-				close(ch)
-				pipeWriter.Close()
-			}(errorChan)
-			if err = writer.WriteField(formFieldPurpose, r.Purpose); err != nil {
-				return
-			}
-			var filename string
-			if naming, ok := r.File.(interface{ Name() string }); ok { // os.File has Name() method
-				filename = naming.Name()
-			}
-			if r.Filename != "" {
-				filename = r.Filename
-			}
-			var part io.Writer
-			part, err = writer.CreateFormFile(formFieldFile, filename)
-			if err != nil {
-				return
-			}
-			if _, err = io.Copy(part, r.File); err != nil {
-				return
-			}
-			if err = writer.Close(); err != nil {
-				return
-			}
-			if err = pipeWriter.Close(); err != nil {
-				return
-			}
-		}()
-	})
+	formReader formReader
 }
 
 func (r *UploadFileRequest) ContentType() string {
-	r.init()
-	return r.contentType
+	return r.formReader.ContentType()
+}
+
+func (r *UploadFileRequest) getFormData() form {
+	return form{
+		formFieldFile:    r.File,
+		formFieldPurpose: r.Purpose,
+	}
 }
 
 func (r *UploadFileRequest) Read(p []byte) (n int, err error) {
-	r.init()
-	for {
-		var (
-			alreadyEOF bool
-			chanClosed bool
-		)
-		{
-			var (
-				chanActive bool
-			)
-			select {
-			case err, chanActive = <-r.errorChan:
-				chanClosed = !chanActive
-				if chanActive {
-					if err != nil {
-						return n, err
-					}
-				}
-			default:
-			}
-		}
-		if alreadyEOF && chanClosed {
-			return n, io.EOF
-		}
-		n, err = r.reader.Read(p)
-		if err != nil && errors.Is(err, io.EOF) && !chanClosed {
-			alreadyEOF = true
-			continue
-		}
-		return n, err
+	return r.formReader.ReadForm(r.getFormData, p)
+}
+
+type UploadFile interface {
+	io.Reader
+	Name() string
+}
+
+const (
+	formFieldPurpose = "purpose"
+	formFieldFile    = "file"
+)
+
+type form map[string]any
+
+type formReader struct {
+	once     sync.Once
+	reader   io.Reader
+	boundary string
+}
+
+func randomBoundary() string {
+	var buf [64]byte
+	io.ReadFull(rand.Reader, buf[:])
+	return hex.EncodeToString(buf[:])
+}
+
+func (r *formReader) ContentType() string {
+	if r.boundary == "" {
+		r.boundary = randomBoundary()
 	}
+	b := r.boundary
+	if strings.ContainsAny(b, `()<>@,;:\"/[]?= `) {
+		b = `"` + b + `"`
+	}
+	return "multipart/form-data; boundary=" + b
+}
+
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+func escapeQuotes(s string) string {
+	return quoteEscaper.Replace(s)
+}
+
+func (r *formReader) startRead(formData form) {
+	if r.boundary == "" {
+		r.boundary = randomBoundary()
+	}
+	readers := make([]io.Reader, 0, len(formData))
+	i := 0
+	for fieldname, v := range formData {
+		if i == 0 {
+			readers = append(readers, strings.NewReader("--"+r.boundary+"\r\n"))
+		} else {
+			readers = append(readers, strings.NewReader("\r\n--"+r.boundary+"\r\n"))
+		}
+		var (
+			buf bytes.Buffer
+			h   = make(textproto.MIMEHeader)
+		)
+		if file, ok := v.(UploadFile); ok {
+			h.Set("Content-Disposition",
+				fmt.Sprintf(`form-data; name="%s"; filename="%s"`, escapeQuotes(fieldname), escapeQuotes(file.Name())))
+			h.Set("Content-Type", "application/octet-stream")
+			for hk, hvv := range h {
+				for _, hv := range hvv {
+					buf.WriteString(hk + ": " + hv + "\r\n")
+				}
+			}
+			buf.WriteString("\r\n")
+			readers = append(readers, &buf)
+			readers = append(readers, file)
+		} else {
+			var fieldvalue string
+			if fieldvalue, ok = v.(string); !ok {
+				fieldvalue = fmt.Sprintf("%v", v)
+			}
+			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"`, escapeQuotes(fieldname)))
+			for hk, hvv := range h {
+				for _, hv := range hvv {
+					buf.WriteString(hk + ": " + hv + "\r\n")
+				}
+			}
+			buf.WriteString("\r\n")
+			buf.WriteString(fieldvalue)
+			readers = append(readers, &buf)
+		}
+		i++
+	}
+	readers = append(readers, strings.NewReader("\r\n--"+r.boundary+"--\r\n"))
+	r.reader = io.MultiReader(readers...)
+}
+
+func (r *formReader) ReadForm(getFormData func() form, p []byte) (n int, err error) {
+	r.once.Do(func() {
+		r.startRead(getFormData())
+	})
+	return r.reader.Read(p)
 }

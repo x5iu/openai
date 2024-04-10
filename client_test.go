@@ -591,9 +591,8 @@ func testClientFile(t *testing.T) {
 		}
 		defer testFile.Close()
 		file, err := client.UploadFile(context.Background(), &UploadFileRequest{
-			File:     testFile,
-			Filename: "client_test.go",
-			Purpose:  "fine-tune",
+			File:    testFile,
+			Purpose: "fine-tune",
 		})
 		if err != nil {
 			t.Errorf("client.UploadFile: %s", err)
