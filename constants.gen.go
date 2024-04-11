@@ -5,53 +5,6 @@ package openai
 //go:generate go run -tags=generate_models_file cmd/generate_models_file.go -file constants.gen.go
 
 const (
-	RoleSystem    = "system"
-	RoleAssistant = "assistant"
-	RoleUser      = "user"
-	RoleTool      = "tool"
-)
-
-const (
-	ToolTypeFunction = "function"
-)
-
-const (
-	FinishReasonToolCalls = "tool_calls"
-	FinishReasonStop      = "stop"
-)
-
-const (
-	ContentPartTypeText     = "text"
-	ContentPartTypeImageUrl = "image_url"
-)
-
-const (
-	ImageUrlDetailLow  = "low"
-	ImageUrlDetailHigh = "high"
-	ImageUrlDetailAuto = "auto"
-)
-
-const (
-	ResponseFormatJSONObject = "json_object"
-	ResponseFormatText       = "text"
-)
-
-const (
-	PurposeFineTune   = "fine-tune"
-	PurposeAssistants = "assistants"
-)
-
-const (
-	DefPropertyTypeObject  = "object"
-	DefPropertyTypeArray   = "array"
-	DefPropertyTypeNull    = "null"
-	DefPropertyTypeString  = "string"
-	DefPropertyTypeNumber  = "number"
-	DefPropertyTypeInteger = "integer"
-	DefPropertyTypeBoolean = "boolean"
-)
-
-const (
 	ModelBabbage002             = "babbage-002"
 	ModelDALLE2                 = "dall-e-2"
 	ModelDALLE3                 = "dall-e-3"
@@ -70,6 +23,8 @@ const (
 	ModelGPT40613               = "gpt-4-0613"
 	ModelGPT41106Preview        = "gpt-4-1106-preview"
 	ModelGPT41106VisionPreview  = "gpt-4-1106-vision-preview"
+	ModelGPT4Turbo              = "gpt-4-turbo"
+	ModelGPT4Turbo20240409      = "gpt-4-turbo-2024-04-09"
 	ModelGPT4TurboPreview       = "gpt-4-turbo-preview"
 	ModelGPT4VisionPreview      = "gpt-4-vision-preview"
 	ModelTextEmbedding3Large    = "text-embedding-3-large"

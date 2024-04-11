@@ -35,7 +35,17 @@ type Client[C Caller] interface {
 	// CreateImage POST {{ trimTrailingSlash $.Client.BaseUrl }}/images/generations
 	// Content-Type: application/json
 	// Authorization: Bearer {{ $.Client.APIKey }}
-	CreateImage(ctx context.Context, request *CreateImageRequest) (*Image, error)
+	CreateImage(ctx context.Context, request *CreateImageRequest) (*Images, error)
+
+	// CreateImageEdit POST {{ trimTrailingSlash $.Client.BaseUrl }}/images/edits
+	// Content-Type: {{ $.request.ContentType }}
+	// Authorization: Bearer {{ $.Client.APIKey }}
+	CreateImageEdit(ctx context.Context, request *CreateImageEditRequest) (*Images, error)
+
+	// CreateImageVariation POST {{ trimTrailingSlash $.Client.BaseUrl }}/images/variations
+	// Content-Type: {{ $.request.ContentType }}
+	// Authorization: Bearer {{ $.Client.APIKey }}
+	CreateImageVariation(ctx context.Context, request *CreateImageVariationRequest) (*Images, error)
 
 	// UploadFile POST {{ trimTrailingSlash $.Client.BaseUrl }}/files
 	// Content-Type: {{ $.request.ContentType }}

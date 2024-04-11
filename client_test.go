@@ -131,7 +131,7 @@ func newTestServer() *httptest.Server {
 	})
 	mux.Handle("/images/generations", &handler{
 		KeyResponse: keyResponse{},
-		ResponseData: &Image{
+		ResponseData: &Images{
 			Created: 1700000000,
 			Data: []struct {
 				RevisedPrompt string `json:"revised_prompt"`
@@ -146,6 +146,8 @@ func newTestServer() *httptest.Server {
 	})
 	mux.Handle("/files", http.HandlerFunc(uploadFile))
 	mux.Handle("/files/test_file_xxx/content", http.HandlerFunc(retrieveFileContent))
+	mux.Handle("/images/edits", http.HandlerFunc(imageHandler))
+	mux.Handle("/images/variations", http.HandlerFunc(imageHandler))
 	return httptest.NewUnstartedServer(mux)
 }
 
@@ -210,6 +212,64 @@ func checkAuthorization(header http.Header, keyResponse keyResponse) (*returnTyp
 		}
 	}
 	return nil, false
+}
+
+func imageHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if _, ok := checkAuthorization(r.Header, keyResponse{}); !ok {
+		var unauthorizedError = struct {
+			Error *Error `json:"error"`
+		}{
+			Error: &Error{
+				Message: "Unauthorized",
+				Type:    "unauthorized_error",
+				Param:   "unauthorized_error",
+				Code:    "unauthorized_error",
+			},
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(&unauthorizedError)
+		return
+	}
+	var internalServerError struct {
+		Error *Error `json:"error"`
+	}
+	internalServerError.Error = &Error{
+		Message: "Internal Server Error",
+		Type:    "internal_server_error",
+		Param:   "internal_server_error",
+		Code:    "internal_server_error",
+	}
+	if err := r.ParseMultipartForm(1024 * 1024); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&internalServerError)
+		return
+	}
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&internalServerError)
+		return
+	}
+	defer file.Close()
+	if header.Filename != "image.png" {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&internalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(&Images{
+		Created: 1700000000,
+		Data: []struct {
+			RevisedPrompt string `json:"revised_prompt"`
+			Url           string `json:"url"`
+		}{
+			{
+				RevisedPrompt: "test",
+				Url:           "oss://oss.test/image/test",
+			},
+		},
+	})
 }
 
 func uploadFile(w http.ResponseWriter, r *http.Request) {
@@ -563,22 +623,68 @@ func testClientChat(t *testing.T) {
 }
 
 func testClientImage(t *testing.T) {
-	client := newClient(testKey)
-	image, err := client.CreateImage(context.Background(), &CreateImageRequest{
-		Model:  "dall-e-2",
-		Prompt: "test",
-		N:      1,
+	t.Run("generations", func(t *testing.T) {
+		client := newClient(testKey)
+		images, err := client.CreateImage(context.Background(), &CreateImageRequest{
+			Model:  "dall-e-2",
+			Prompt: "test",
+			N:      1,
+		})
+		if err != nil {
+			t.Errorf("client.CreateImage: %s", err)
+			return
+		}
+		if len(images.Data) != 1 || images.Data[0].RevisedPrompt != "test" ||
+			images.Data[0].Url != "oss://oss.test/image/test" {
+			serialized, _ := json.Marshal(images)
+			t.Errorf("client.CreateImage: unexpected Images object => %s", string(serialized))
+			return
+		}
 	})
-	if err != nil {
-		t.Errorf("client.CreateImage: %s", err)
-		return
-	}
-	if len(image.Data) != 1 || image.Data[0].RevisedPrompt != "test" ||
-		image.Data[0].Url != "oss://oss.test/image/test" {
-		serialized, _ := json.Marshal(image)
-		t.Errorf("client.CreateImage: unexpected Image object => %s", string(serialized))
-		return
-	}
+	t.Run("edits", func(t *testing.T) {
+		client := newClient(testKey)
+		images, err := client.CreateImageEdit(context.Background(), &CreateImageEditRequest{
+			Image:          &namedReader{name: "image.png", reader: strings.NewReader("test")},
+			Prompt:         "test",
+			Mask:           &namedReader{name: "mask.png", reader: strings.NewReader("test")},
+			Model:          ModelDALLE2,
+			N:              1,
+			Size:           ImageSize256x256,
+			ResponseFormat: ResponseFormatUrl,
+			User:           "test_user",
+		})
+		if err != nil {
+			t.Errorf("client.CreateImageEdit: %s", err)
+			return
+		}
+		if len(images.Data) != 1 || images.Data[0].RevisedPrompt != "test" ||
+			images.Data[0].Url != "oss://oss.test/image/test" {
+			serialized, _ := json.Marshal(images)
+			t.Errorf("client.CreateImageEdit: unexpected Images object => %s", string(serialized))
+			return
+		}
+	})
+	t.Run("variation", func(t *testing.T) {
+		client := newClient(testKey)
+		images, err := client.CreateImageVariation(context.Background(), &CreateImageVariationRequest{
+			Image:          &namedReader{name: "image.png", reader: strings.NewReader("test")},
+			Model:          ModelDALLE2,
+			N:              1,
+			ResponseFormat: ResponseFormatUrl,
+			Size:           ImageSize256x256,
+			User:           "test_user",
+		})
+		if err != nil {
+			t.Errorf("client.CreateImageVariation: %s", err)
+			return
+		}
+		if len(images.Data) != 1 || images.Data[0].RevisedPrompt != "test" ||
+			images.Data[0].Url != "oss://oss.test/image/test" {
+			serialized, _ := json.Marshal(images)
+			t.Errorf("client.CreateImageVariation: unexpected Images object => %s", string(serialized))
+			return
+		}
+	})
 }
 
 func testClientFile(t *testing.T) {

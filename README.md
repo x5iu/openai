@@ -21,7 +21,7 @@ Many interfaces are still incomplete and awaiting integration, as shown below:
 - [ ] Embedding
 - [ ] TTS
 - [ ] Whisper
-- [ ] Image
+- [x] Image
 - [x] File
 - [ ] Assistant
 - [ ] Fine-tuning

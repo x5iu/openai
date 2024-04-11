@@ -14,16 +14,17 @@ func (*closedReader) Name() string             { return "closed_reader" }
 func (*closedReader) Read([]byte) (int, error) { return 0, os.ErrClosed }
 
 type namedReader struct {
+	name   string
 	reader io.Reader
 }
 
-func (nr *namedReader) Name() string                     { return "named_reader" }
+func (nr *namedReader) Name() string                     { return nr.name }
 func (nr *namedReader) Read(p []byte) (n int, err error) { return nr.reader.Read(p) }
 
 func TestUploadFileRequest(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		r := &UploadFileRequest{
-			File:    &namedReader{strings.NewReader("test")},
+			File:    &namedReader{name: "named_reader", reader: strings.NewReader("test")},
 			Purpose: "fine-tune",
 		}
 		if _, err := io.ReadAll(r); err != nil {

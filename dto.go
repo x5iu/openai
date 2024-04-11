@@ -302,7 +302,7 @@ type ToolCall struct {
 
 type ToolCalls []*ToolCall
 
-type Image struct {
+type Images struct {
 	Created int `json:"created"`
 	Data    []struct {
 		RevisedPrompt string `json:"revised_prompt"`

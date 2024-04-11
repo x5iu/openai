@@ -19,6 +19,8 @@ const (
 	CallerListModels           = "ListModels"
 	CallerCreateChatCompletion = "CreateChatCompletion"
 	CallerCreateImage          = "CreateImage"
+	CallerCreateImageEdit      = "CreateImageEdit"
+	CallerCreateImageVariation = "CreateImageVariation"
 	CallerUploadFile           = "UploadFile"
 	CallerRetrieveFileContent  = "RetrieveFileContent"
 )
@@ -38,6 +40,10 @@ var (
 	headerTmplCreateChatCompletion = template.Must(template.New("HeaderCreateChatCompletion").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
 	addrTmplCreateImage            = template.Must(template.New("AddressCreateImage").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/images/generations"))
 	headerTmplCreateImage          = template.Must(template.New("HeaderCreateImage").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
+	addrTmplCreateImageEdit        = template.Must(template.New("AddressCreateImageEdit").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/images/edits"))
+	headerTmplCreateImageEdit      = template.Must(template.New("HeaderCreateImageEdit").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: {{ $.request.ContentType }}\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
+	addrTmplCreateImageVariation   = template.Must(template.New("AddressCreateImageVariation").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/images/variations"))
+	headerTmplCreateImageVariation = template.Must(template.New("HeaderCreateImageVariation").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: {{ $.request.ContentType }}\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
 	addrTmplUploadFile             = template.Must(template.New("AddressUploadFile").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/files"))
 	headerTmplUploadFile           = template.Must(template.New("HeaderUploadFile").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: {{ $.request.ContentType }}\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
 	addrTmplRetrieveFileContent    = template.Must(template.New("AddressRetrieveFileContent").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/files/{{ $.fileID }}/content"))
@@ -224,7 +230,7 @@ func (__imp *implClient[C]) CreateChatCompletion(ctx context.Context, request *C
 	return v0CreateChatCompletion, nil
 }
 
-func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImageRequest) (*Image, error) {
+func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImageRequest) (*Images, error) {
 	var innerCreateImage any = __imp.Inner()
 
 	addrCreateImage := __rt.GetBuffer()
@@ -236,7 +242,7 @@ func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImag
 	defer headerCreateImage.Reset()
 
 	var (
-		v0CreateImage           = new(Image)
+		v0CreateImage           = new(Images)
 		errCreateImage          error
 		httpResponseCreateImage *http.Response
 		responseCreateImage     __rt.FutureResponse = __imp.response()
@@ -313,6 +319,188 @@ func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImag
 	}
 
 	return v0CreateImage, nil
+}
+
+func (__imp *implClient[C]) CreateImageEdit(ctx context.Context, request *CreateImageEditRequest) (*Images, error) {
+	var innerCreateImageEdit any = __imp.Inner()
+
+	addrCreateImageEdit := __rt.GetBuffer()
+	defer __rt.PutBuffer(addrCreateImageEdit)
+	defer addrCreateImageEdit.Reset()
+
+	headerCreateImageEdit := __rt.GetBuffer()
+	defer __rt.PutBuffer(headerCreateImageEdit)
+	defer headerCreateImageEdit.Reset()
+
+	var (
+		v0CreateImageEdit           = new(Images)
+		errCreateImageEdit          error
+		httpResponseCreateImageEdit *http.Response
+		responseCreateImageEdit     __rt.FutureResponse = __imp.response()
+	)
+
+	if errCreateImageEdit = addrTmplCreateImageEdit.Execute(addrCreateImageEdit, map[string]any{
+		"Client":  __imp.Inner(),
+		"ctx":     ctx,
+		"request": request,
+	}); errCreateImageEdit != nil {
+		return v0CreateImageEdit, fmt.Errorf("error building 'CreateImageEdit' url: %w", errCreateImageEdit)
+	}
+
+	if errCreateImageEdit = headerTmplCreateImageEdit.Execute(headerCreateImageEdit, map[string]any{
+		"Client":  __imp.Inner(),
+		"ctx":     ctx,
+		"request": request,
+	}); errCreateImageEdit != nil {
+		return v0CreateImageEdit, fmt.Errorf("error building 'CreateImageEdit' header: %w", errCreateImageEdit)
+	}
+	bufReaderCreateImageEdit := bufio.NewReader(headerCreateImageEdit)
+	mimeHeaderCreateImageEdit, errCreateImageEdit := textproto.NewReader(bufReaderCreateImageEdit).ReadMIMEHeader()
+	if errCreateImageEdit != nil {
+		return v0CreateImageEdit, fmt.Errorf("error reading 'CreateImageEdit' header: %w", errCreateImageEdit)
+	}
+
+	urlCreateImageEdit := addrCreateImageEdit.String()
+	requestCreateImageEdit, errCreateImageEdit := http.NewRequestWithContext(ctx, "POST", urlCreateImageEdit, request)
+	if errCreateImageEdit != nil {
+		return v0CreateImageEdit, fmt.Errorf("error building 'CreateImageEdit' request: %w", errCreateImageEdit)
+	}
+
+	for kCreateImageEdit, vvCreateImageEdit := range mimeHeaderCreateImageEdit {
+		for _, vCreateImageEdit := range vvCreateImageEdit {
+			requestCreateImageEdit.Header.Add(kCreateImageEdit, vCreateImageEdit)
+		}
+	}
+
+	startCreateImageEdit := time.Now()
+
+	if httpClientCreateImageEdit, okCreateImageEdit := innerCreateImageEdit.(interface{ Client() *http.Client }); okCreateImageEdit {
+		httpResponseCreateImageEdit, errCreateImageEdit = httpClientCreateImageEdit.Client().Do(requestCreateImageEdit)
+	} else {
+		httpResponseCreateImageEdit, errCreateImageEdit = http.DefaultClient.Do(requestCreateImageEdit)
+	}
+
+	if logCreateImageEdit, okCreateImageEdit := innerCreateImageEdit.(interface {
+		Log(ctx context.Context, caller string, request *http.Request, response *http.Response, elapse time.Duration)
+	}); okCreateImageEdit {
+		logCreateImageEdit.Log(ctx, "CreateImageEdit", requestCreateImageEdit, httpResponseCreateImageEdit, time.Since(startCreateImageEdit))
+	}
+
+	if errCreateImageEdit != nil {
+		return v0CreateImageEdit, fmt.Errorf("error sending 'CreateImageEdit' request: %w", errCreateImageEdit)
+	}
+
+	if httpResponseCreateImageEdit.StatusCode < 200 || httpResponseCreateImageEdit.StatusCode > 299 {
+		return v0CreateImageEdit, __rt.NewFutureResponseError("CreateImageEdit", httpResponseCreateImageEdit)
+	}
+
+	if errCreateImageEdit = responseCreateImageEdit.FromResponse("CreateImageEdit", httpResponseCreateImageEdit); errCreateImageEdit != nil {
+		return v0CreateImageEdit, fmt.Errorf("error converting 'CreateImageEdit' response: %w", errCreateImageEdit)
+	}
+
+	addrCreateImageEdit.Reset()
+	headerCreateImageEdit.Reset()
+
+	if errCreateImageEdit = responseCreateImageEdit.Err(); errCreateImageEdit != nil {
+		return v0CreateImageEdit, fmt.Errorf("error returned from 'CreateImageEdit' response: %w", errCreateImageEdit)
+	}
+
+	if errCreateImageEdit = responseCreateImageEdit.ScanValues(v0CreateImageEdit); errCreateImageEdit != nil {
+		return v0CreateImageEdit, fmt.Errorf("error scanning value from 'CreateImageEdit' response: %w", errCreateImageEdit)
+	}
+
+	return v0CreateImageEdit, nil
+}
+
+func (__imp *implClient[C]) CreateImageVariation(ctx context.Context, request *CreateImageVariationRequest) (*Images, error) {
+	var innerCreateImageVariation any = __imp.Inner()
+
+	addrCreateImageVariation := __rt.GetBuffer()
+	defer __rt.PutBuffer(addrCreateImageVariation)
+	defer addrCreateImageVariation.Reset()
+
+	headerCreateImageVariation := __rt.GetBuffer()
+	defer __rt.PutBuffer(headerCreateImageVariation)
+	defer headerCreateImageVariation.Reset()
+
+	var (
+		v0CreateImageVariation           = new(Images)
+		errCreateImageVariation          error
+		httpResponseCreateImageVariation *http.Response
+		responseCreateImageVariation     __rt.FutureResponse = __imp.response()
+	)
+
+	if errCreateImageVariation = addrTmplCreateImageVariation.Execute(addrCreateImageVariation, map[string]any{
+		"Client":  __imp.Inner(),
+		"ctx":     ctx,
+		"request": request,
+	}); errCreateImageVariation != nil {
+		return v0CreateImageVariation, fmt.Errorf("error building 'CreateImageVariation' url: %w", errCreateImageVariation)
+	}
+
+	if errCreateImageVariation = headerTmplCreateImageVariation.Execute(headerCreateImageVariation, map[string]any{
+		"Client":  __imp.Inner(),
+		"ctx":     ctx,
+		"request": request,
+	}); errCreateImageVariation != nil {
+		return v0CreateImageVariation, fmt.Errorf("error building 'CreateImageVariation' header: %w", errCreateImageVariation)
+	}
+	bufReaderCreateImageVariation := bufio.NewReader(headerCreateImageVariation)
+	mimeHeaderCreateImageVariation, errCreateImageVariation := textproto.NewReader(bufReaderCreateImageVariation).ReadMIMEHeader()
+	if errCreateImageVariation != nil {
+		return v0CreateImageVariation, fmt.Errorf("error reading 'CreateImageVariation' header: %w", errCreateImageVariation)
+	}
+
+	urlCreateImageVariation := addrCreateImageVariation.String()
+	requestCreateImageVariation, errCreateImageVariation := http.NewRequestWithContext(ctx, "POST", urlCreateImageVariation, request)
+	if errCreateImageVariation != nil {
+		return v0CreateImageVariation, fmt.Errorf("error building 'CreateImageVariation' request: %w", errCreateImageVariation)
+	}
+
+	for kCreateImageVariation, vvCreateImageVariation := range mimeHeaderCreateImageVariation {
+		for _, vCreateImageVariation := range vvCreateImageVariation {
+			requestCreateImageVariation.Header.Add(kCreateImageVariation, vCreateImageVariation)
+		}
+	}
+
+	startCreateImageVariation := time.Now()
+
+	if httpClientCreateImageVariation, okCreateImageVariation := innerCreateImageVariation.(interface{ Client() *http.Client }); okCreateImageVariation {
+		httpResponseCreateImageVariation, errCreateImageVariation = httpClientCreateImageVariation.Client().Do(requestCreateImageVariation)
+	} else {
+		httpResponseCreateImageVariation, errCreateImageVariation = http.DefaultClient.Do(requestCreateImageVariation)
+	}
+
+	if logCreateImageVariation, okCreateImageVariation := innerCreateImageVariation.(interface {
+		Log(ctx context.Context, caller string, request *http.Request, response *http.Response, elapse time.Duration)
+	}); okCreateImageVariation {
+		logCreateImageVariation.Log(ctx, "CreateImageVariation", requestCreateImageVariation, httpResponseCreateImageVariation, time.Since(startCreateImageVariation))
+	}
+
+	if errCreateImageVariation != nil {
+		return v0CreateImageVariation, fmt.Errorf("error sending 'CreateImageVariation' request: %w", errCreateImageVariation)
+	}
+
+	if httpResponseCreateImageVariation.StatusCode < 200 || httpResponseCreateImageVariation.StatusCode > 299 {
+		return v0CreateImageVariation, __rt.NewFutureResponseError("CreateImageVariation", httpResponseCreateImageVariation)
+	}
+
+	if errCreateImageVariation = responseCreateImageVariation.FromResponse("CreateImageVariation", httpResponseCreateImageVariation); errCreateImageVariation != nil {
+		return v0CreateImageVariation, fmt.Errorf("error converting 'CreateImageVariation' response: %w", errCreateImageVariation)
+	}
+
+	addrCreateImageVariation.Reset()
+	headerCreateImageVariation.Reset()
+
+	if errCreateImageVariation = responseCreateImageVariation.Err(); errCreateImageVariation != nil {
+		return v0CreateImageVariation, fmt.Errorf("error returned from 'CreateImageVariation' response: %w", errCreateImageVariation)
+	}
+
+	if errCreateImageVariation = responseCreateImageVariation.ScanValues(v0CreateImageVariation); errCreateImageVariation != nil {
+		return v0CreateImageVariation, fmt.Errorf("error scanning value from 'CreateImageVariation' response: %w", errCreateImageVariation)
+	}
+
+	return v0CreateImageVariation, nil
 }
 
 func (__imp *implClient[C]) UploadFile(ctx context.Context, request *UploadFileRequest) (*File, error) {

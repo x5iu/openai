@@ -36,11 +36,102 @@ type ChatCompletionRequest struct {
 
 type CreateImageRequest struct {
 	defc.JSONBody[CreateImageRequest]
-	Model   string `json:"model"`
-	Prompt  string `json:"prompt"`
-	N       int    `json:"n,omitempty"`
-	Size    string `json:"size,omitempty"`
-	Quality string `json:"quality,omitempty"`
+	Prompt         string `json:"prompt"`
+	Model          string `json:"model,omitempty"`
+	N              int    `json:"n,omitempty"`
+	Quality        string `json:"quality,omitempty"`
+	ResponseFormat string `json:"response_format,omitempty"`
+	Size           string `json:"size,omitempty"`
+	Style          string `json:"style,omitempty"`
+	User           string `json:"user,omitempty"`
+}
+
+type CreateImageEditRequest struct {
+	Image          UploadFile
+	Prompt         string
+	Mask           UploadFile
+	Model          string
+	N              int
+	Size           string
+	ResponseFormat string
+	User           string
+
+	formReader formReader
+}
+
+func (r *CreateImageEditRequest) ContentType() string {
+	return r.formReader.ContentType()
+}
+
+func (r *CreateImageEditRequest) getFormData() form {
+	formData := form{
+		formFieldImage:  r.Image,
+		formFieldPrompt: r.Prompt,
+	}
+	if r.Mask != nil {
+		formData[formFieldMask] = r.Mask
+	}
+	if r.Model != "" {
+		formData[formFieldModel] = r.Model
+	}
+	if r.N != 0 {
+		formData[formFieldN] = r.N
+	}
+	if r.Size != "" {
+		formData[formFieldSize] = r.Size
+	}
+	if r.ResponseFormat != "" {
+		formData[formFieldResponseFormat] = r.ResponseFormat
+	}
+	if r.User != "" {
+		formData[formFieldUser] = r.User
+	}
+	return formData
+}
+
+func (r *CreateImageEditRequest) Read(p []byte) (n int, err error) {
+	return r.formReader.ReadForm(r.getFormData, p)
+}
+
+type CreateImageVariationRequest struct {
+	Image          UploadFile
+	Model          string
+	N              int
+	ResponseFormat string
+	Size           string
+	User           string
+
+	formReader formReader
+}
+
+func (r *CreateImageVariationRequest) ContentType() string {
+	return r.formReader.ContentType()
+}
+
+func (r *CreateImageVariationRequest) getFormData() form {
+	formData := form{
+		formFieldImage: r.Image,
+	}
+	if r.Model != "" {
+		formData[formFieldModel] = r.Model
+	}
+	if r.N != 0 {
+		formData[formFieldN] = r.N
+	}
+	if r.ResponseFormat != "" {
+		formData[formFieldResponseFormat] = r.ResponseFormat
+	}
+	if r.Size != "" {
+		formData[formFieldSize] = r.Size
+	}
+	if r.User != "" {
+		formData[formFieldUser] = r.User
+	}
+	return formData
+}
+
+func (r *CreateImageVariationRequest) Read(p []byte) (n int, err error) {
+	return r.formReader.ReadForm(r.getFormData, p)
 }
 
 type UploadFileRequest struct {
@@ -71,8 +162,16 @@ type UploadFile interface {
 }
 
 const (
-	formFieldPurpose = "purpose"
-	formFieldFile    = "file"
+	formFieldFile           = "file"
+	formFieldPurpose        = "purpose"
+	formFieldImage          = "image"
+	formFieldPrompt         = "prompt"
+	formFieldMask           = "mask"
+	formFieldModel          = "model"
+	formFieldN              = "n"
+	formFieldSize           = "size"
+	formFieldResponseFormat = "response_format"
+	formFieldUser           = "User"
 )
 
 type form map[string]any
