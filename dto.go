@@ -302,6 +302,23 @@ type ToolCall struct {
 
 type ToolCalls []*ToolCall
 
+type Embeddings struct {
+	Object string `json:"object"`
+	Data   []struct {
+		Object    string    `json:"object"`
+		Embedding []float64 `json:"embedding"`
+		Index     int       `json:"index"`
+	} `json:"data"`
+	Model string `json:"model"`
+	Usage struct {
+		PromptTokens int `json:"prompt_tokens"`
+		TotalTokens  int `json:"total_tokens"`
+	} `json:"usage"`
+}
+
+func (e *Embeddings) GetPromptTokens() int { return e.Usage.PromptTokens }
+func (e *Embeddings) GetTotalTokens() int  { return e.Usage.TotalTokens }
+
 type Images struct {
 	Created int `json:"created"`
 	Data    []struct {
@@ -349,6 +366,22 @@ type (
 
 func (s StopSequence) sequences() []string  { return []string{string(s)} }
 func (s StopSequences) sequences() []string { return s }
+
+type Input interface {
+	input()
+}
+
+type (
+	InputString       string
+	InputTokens       []int
+	InputStringsArray []InputString
+	InputTokensArray  []InputTokens
+)
+
+func (InputString) input()       {}
+func (InputTokens) input()       {}
+func (InputStringsArray) input() {}
+func (InputTokensArray) input()  {}
 
 type Map[T any] map[string]T
 

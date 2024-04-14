@@ -32,6 +32,11 @@ type Client[C Caller] interface {
 	// Authorization: Bearer {{ $.Client.APIKey }}
 	CreateChatCompletion(ctx context.Context, request *ChatCompletionRequest) (ChatCompletion, error)
 
+	// CreateEmbeddings POST {{ trimTrailingSlash $.Client.BaseUrl }}/embeddings
+	// Content-Type: application/json
+	// Authorization: Bearer {{ $.Client.APIKey }}
+	CreateEmbeddings(ctx context.Context, request *CreateEmbeddingsRequest) (*Embeddings, error)
+
 	// CreateImage POST {{ trimTrailingSlash $.Client.BaseUrl }}/images/generations
 	// Content-Type: application/json
 	// Authorization: Bearer {{ $.Client.APIKey }}

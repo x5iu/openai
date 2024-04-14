@@ -18,7 +18,7 @@ It will call the `/models` endpoint to query the currently available models and 
 
 Many interfaces are still incomplete and awaiting integration, as shown below:
 
-- [ ] Embedding
+- [x] Embedding
 - [ ] TTS
 - [ ] Whisper
 - [x] Image

@@ -18,6 +18,7 @@ import (
 const (
 	CallerListModels           = "ListModels"
 	CallerCreateChatCompletion = "CreateChatCompletion"
+	CallerCreateEmbeddings     = "CreateEmbeddings"
 	CallerCreateImage          = "CreateImage"
 	CallerCreateImageEdit      = "CreateImageEdit"
 	CallerCreateImageVariation = "CreateImageVariation"
@@ -38,6 +39,8 @@ var (
 	headerTmplListModels           = template.Must(template.New("HeaderListModels").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Authorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
 	addrTmplCreateChatCompletion   = template.Must(template.New("AddressCreateChatCompletion").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/chat/completions"))
 	headerTmplCreateChatCompletion = template.Must(template.New("HeaderCreateChatCompletion").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
+	addrTmplCreateEmbeddings       = template.Must(template.New("AddressCreateEmbeddings").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/embeddings"))
+	headerTmplCreateEmbeddings     = template.Must(template.New("HeaderCreateEmbeddings").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
 	addrTmplCreateImage            = template.Must(template.New("AddressCreateImage").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/images/generations"))
 	headerTmplCreateImage          = template.Must(template.New("HeaderCreateImage").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("Content-Type: application/json\r\nAuthorization: Bearer {{ $.Client.APIKey }}\r\n\r\n"))
 	addrTmplCreateImageEdit        = template.Must(template.New("AddressCreateImageEdit").Funcs(template.FuncMap{"trimTrailingSlash": TrimTrailingSlash}).Parse("{{ trimTrailingSlash $.Client.BaseUrl }}/images/edits"))
@@ -228,6 +231,97 @@ func (__imp *implClient[C]) CreateChatCompletion(ctx context.Context, request *C
 	}
 
 	return v0CreateChatCompletion, nil
+}
+
+func (__imp *implClient[C]) CreateEmbeddings(ctx context.Context, request *CreateEmbeddingsRequest) (*Embeddings, error) {
+	var innerCreateEmbeddings any = __imp.Inner()
+
+	addrCreateEmbeddings := __rt.GetBuffer()
+	defer __rt.PutBuffer(addrCreateEmbeddings)
+	defer addrCreateEmbeddings.Reset()
+
+	headerCreateEmbeddings := __rt.GetBuffer()
+	defer __rt.PutBuffer(headerCreateEmbeddings)
+	defer headerCreateEmbeddings.Reset()
+
+	var (
+		v0CreateEmbeddings           = new(Embeddings)
+		errCreateEmbeddings          error
+		httpResponseCreateEmbeddings *http.Response
+		responseCreateEmbeddings     __rt.FutureResponse = __imp.response()
+	)
+
+	if errCreateEmbeddings = addrTmplCreateEmbeddings.Execute(addrCreateEmbeddings, map[string]any{
+		"Client":  __imp.Inner(),
+		"ctx":     ctx,
+		"request": request,
+	}); errCreateEmbeddings != nil {
+		return v0CreateEmbeddings, fmt.Errorf("error building 'CreateEmbeddings' url: %w", errCreateEmbeddings)
+	}
+
+	if errCreateEmbeddings = headerTmplCreateEmbeddings.Execute(headerCreateEmbeddings, map[string]any{
+		"Client":  __imp.Inner(),
+		"ctx":     ctx,
+		"request": request,
+	}); errCreateEmbeddings != nil {
+		return v0CreateEmbeddings, fmt.Errorf("error building 'CreateEmbeddings' header: %w", errCreateEmbeddings)
+	}
+	bufReaderCreateEmbeddings := bufio.NewReader(headerCreateEmbeddings)
+	mimeHeaderCreateEmbeddings, errCreateEmbeddings := textproto.NewReader(bufReaderCreateEmbeddings).ReadMIMEHeader()
+	if errCreateEmbeddings != nil {
+		return v0CreateEmbeddings, fmt.Errorf("error reading 'CreateEmbeddings' header: %w", errCreateEmbeddings)
+	}
+
+	urlCreateEmbeddings := addrCreateEmbeddings.String()
+	requestCreateEmbeddings, errCreateEmbeddings := http.NewRequestWithContext(ctx, "POST", urlCreateEmbeddings, request)
+	if errCreateEmbeddings != nil {
+		return v0CreateEmbeddings, fmt.Errorf("error building 'CreateEmbeddings' request: %w", errCreateEmbeddings)
+	}
+
+	for kCreateEmbeddings, vvCreateEmbeddings := range mimeHeaderCreateEmbeddings {
+		for _, vCreateEmbeddings := range vvCreateEmbeddings {
+			requestCreateEmbeddings.Header.Add(kCreateEmbeddings, vCreateEmbeddings)
+		}
+	}
+
+	startCreateEmbeddings := time.Now()
+
+	if httpClientCreateEmbeddings, okCreateEmbeddings := innerCreateEmbeddings.(interface{ Client() *http.Client }); okCreateEmbeddings {
+		httpResponseCreateEmbeddings, errCreateEmbeddings = httpClientCreateEmbeddings.Client().Do(requestCreateEmbeddings)
+	} else {
+		httpResponseCreateEmbeddings, errCreateEmbeddings = http.DefaultClient.Do(requestCreateEmbeddings)
+	}
+
+	if logCreateEmbeddings, okCreateEmbeddings := innerCreateEmbeddings.(interface {
+		Log(ctx context.Context, caller string, request *http.Request, response *http.Response, elapse time.Duration)
+	}); okCreateEmbeddings {
+		logCreateEmbeddings.Log(ctx, "CreateEmbeddings", requestCreateEmbeddings, httpResponseCreateEmbeddings, time.Since(startCreateEmbeddings))
+	}
+
+	if errCreateEmbeddings != nil {
+		return v0CreateEmbeddings, fmt.Errorf("error sending 'CreateEmbeddings' request: %w", errCreateEmbeddings)
+	}
+
+	if httpResponseCreateEmbeddings.StatusCode < 200 || httpResponseCreateEmbeddings.StatusCode > 299 {
+		return v0CreateEmbeddings, __rt.NewFutureResponseError("CreateEmbeddings", httpResponseCreateEmbeddings)
+	}
+
+	if errCreateEmbeddings = responseCreateEmbeddings.FromResponse("CreateEmbeddings", httpResponseCreateEmbeddings); errCreateEmbeddings != nil {
+		return v0CreateEmbeddings, fmt.Errorf("error converting 'CreateEmbeddings' response: %w", errCreateEmbeddings)
+	}
+
+	addrCreateEmbeddings.Reset()
+	headerCreateEmbeddings.Reset()
+
+	if errCreateEmbeddings = responseCreateEmbeddings.Err(); errCreateEmbeddings != nil {
+		return v0CreateEmbeddings, fmt.Errorf("error returned from 'CreateEmbeddings' response: %w", errCreateEmbeddings)
+	}
+
+	if errCreateEmbeddings = responseCreateEmbeddings.ScanValues(v0CreateEmbeddings); errCreateEmbeddings != nil {
+		return v0CreateEmbeddings, fmt.Errorf("error scanning value from 'CreateEmbeddings' response: %w", errCreateEmbeddings)
+	}
+
+	return v0CreateEmbeddings, nil
 }
 
 func (__imp *implClient[C]) CreateImage(ctx context.Context, request *CreateImageRequest) (*Images, error) {

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -126,6 +127,36 @@ func newTestServer() *httptest.Server {
 				PromptTokens:     10,
 				CompletionTokens: 5,
 				TotalTokens:      15,
+			},
+		},
+	})
+	mux.Handle("/embeddings", &handler{
+		KeyResponse: keyResponse{},
+		ResponseData: &Embeddings{
+			Object: "list",
+			Data: []struct {
+				Object    string    `json:"object"`
+				Embedding []float64 `json:"embedding"`
+				Index     int       `json:"index"`
+			}{
+				{
+					Object: "embedding",
+					Embedding: []float64{
+						0.001,
+						0.002,
+						0.003,
+						0.004,
+					},
+					Index: 0,
+				},
+			},
+			Model: "text-embedding-ada-002",
+			Usage: struct {
+				PromptTokens int `json:"prompt_tokens"`
+				TotalTokens  int `json:"total_tokens"`
+			}{
+				PromptTokens: 10,
+				TotalTokens:  10,
 			},
 		},
 	})
@@ -385,6 +416,7 @@ func TestClient(t *testing.T) {
 	t.Run("error", testClientError)
 	t.Run("models", testClientModels)
 	t.Run("chat", testClientChat)
+	t.Run("embeddings", testClientEmbeddings)
 	t.Run("image", testClientImage)
 	t.Run("file", testClientFile)
 }
@@ -620,6 +652,27 @@ func testClientChat(t *testing.T) {
 			})
 		})
 	})
+}
+
+func testClientEmbeddings(t *testing.T) {
+	client := newClient(testKey)
+	embeddings, err := client.CreateEmbeddings(context.Background(), &CreateEmbeddingsRequest{
+		Input:          InputString("test"),
+		Model:          "text-embedding-ada-002",
+		EncodingFormat: EncodingFormatFloat,
+		User:           "test",
+	})
+	if err != nil {
+		t.Errorf("client.CreateEmbeddings: %s", err)
+		return
+	}
+	if len(embeddings.Data) != 1 || embeddings.Data[0].Index != 0 ||
+		!reflect.DeepEqual(embeddings.Data[0].Embedding, []float64{0.001, 0.002, 0.003, 0.004}) ||
+		embeddings.GetPromptTokens() != 10 || embeddings.GetTotalTokens() != 10 {
+		serialized, _ := json.Marshal(embeddings)
+		t.Errorf("client.CreateEmbeddings: unexpected Embeddings object => %s", string(serialized))
+		return
+	}
 }
 
 func testClientImage(t *testing.T) {

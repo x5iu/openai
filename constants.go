@@ -36,6 +36,11 @@ const (
 )
 
 const (
+	EncodingFormatFloat  = "float"
+	EncodingFormatBase64 = "base64"
+)
+
+const (
 	ResponseFormatJSONObject = "json_object"
 	ResponseFormatText       = "text"
 	ResponseFormatUrl        = "url"

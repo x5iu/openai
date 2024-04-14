@@ -33,6 +33,16 @@ type ChatCompletionRequest struct {
 	User             string                `json:"user,omitempty"`
 }
 
+type CreateEmbeddingsRequest struct {
+	defc.JSONBody[CreateEmbeddingsRequest]
+
+	Input          Input  `json:"input"`
+	Model          string `json:"model"`
+	EncodingFormat string `json:"encoding_format,omitempty"`
+	Dimensions     int    `json:"dimensions,omitempty"`
+	User           string `json:"user,omitempty"`
+}
+
 type CreateImageRequest struct {
 	defc.JSONBody[CreateImageRequest]
 
