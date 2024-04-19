@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 )
 
 type ChatCompletion interface {
+	io.Closer
 	GetMessage() *Message
 }
 
@@ -105,6 +107,12 @@ type Completion struct {
 		CompletionTokens int `json:"completion_tokens"`
 		TotalTokens      int `json:"total_tokens"`
 	} `json:"usage"`
+}
+
+// Close does not need to do anything because Completion does not need to clean up anything,
+// solely for the purpose of implementing the ChatCompletion interface.
+func (c *Completion) Close() error {
+	return nil
 }
 
 func (c *Completion) GetMessageByIndex(idx int) (message *Message) {
