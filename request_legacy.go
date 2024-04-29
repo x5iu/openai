@@ -1,4 +1,4 @@
-//go:build !legacy
+//go:build legacy
 
 package openai
 
@@ -13,8 +13,6 @@ type UploadFile interface {
 }
 
 type ChatCompletionRequest struct {
-	defc.JSONBody[ChatCompletionRequest]
-
 	Messages         Messages              `json:"messages"`
 	Model            string                `json:"model"`
 	FrequencyPenalty NullableType[float64] `json:"frequency_penalty,omitempty"`
@@ -36,8 +34,6 @@ type ChatCompletionRequest struct {
 }
 
 type CreateEmbeddingsRequest struct {
-	defc.JSONBody[CreateEmbeddingsRequest]
-
 	Input          Input  `json:"input"`
 	Model          string `json:"model"`
 	EncodingFormat string `json:"encoding_format,omitempty"`
@@ -46,8 +42,6 @@ type CreateEmbeddingsRequest struct {
 }
 
 type CreateImageRequest struct {
-	defc.JSONBody[CreateImageRequest]
-
 	Prompt         string `json:"prompt"`
 	Model          string `json:"model,omitempty"`
 	N              int    `json:"n,omitempty"`

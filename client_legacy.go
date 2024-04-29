@@ -1,9 +1,10 @@
-//go:build !legacy
+//go:build legacy
 
 package openai
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -23,7 +24,7 @@ type CustomHTTPClient interface {
 	Client() *http.Client
 }
 
-//go:generate go run -mod=mod github.com/x5iu/defc generate --features=api/logx,api/error,api/future,api/client --func=trimTrailingSlash=TrimTrailingSlash
+//go:generate go run -mod=mod github.com/x5iu/defc generate --features=api/logx,api/error,api/future,api/client --func=trimTrailingSlash=TrimTrailingSlash --func=encodejson=EncodeJSON
 type Client[C Caller] interface {
 	// ListModels GET {{ trimTrailingSlash $.Client.BaseUrl }}/models
 	// Authorization: Bearer {{ $.Client.APIKey }}
@@ -32,16 +33,22 @@ type Client[C Caller] interface {
 	// CreateChatCompletion POST {{ trimTrailingSlash $.Client.BaseUrl }}/chat/completions
 	// Content-Type: application/json
 	// Authorization: Bearer {{ $.Client.APIKey }}
+	//
+	// {{ encodejson $.request }}
 	CreateChatCompletion(ctx context.Context, request *ChatCompletionRequest) (ChatCompletion, error)
 
 	// CreateEmbeddings POST {{ trimTrailingSlash $.Client.BaseUrl }}/embeddings
 	// Content-Type: application/json
 	// Authorization: Bearer {{ $.Client.APIKey }}
+	//
+	// {{ encodejson $.request }}
 	CreateEmbeddings(ctx context.Context, request *CreateEmbeddingsRequest) (*Embeddings, error)
 
 	// CreateImage POST {{ trimTrailingSlash $.Client.BaseUrl }}/images/generations
 	// Content-Type: application/json
 	// Authorization: Bearer {{ $.Client.APIKey }}
+	//
+	// {{ encodejson $.request }}
 	CreateImage(ctx context.Context, request *CreateImageRequest) (*Images, error)
 
 	// CreateImageEdit POST {{ trimTrailingSlash $.Client.BaseUrl }}/images/edits
@@ -72,4 +79,12 @@ func TrimTrailingSlash(s string) string {
 		s = strings.TrimSuffix(s, "/")
 	}
 	return s
+}
+
+func EncodeJSON(obj any) (string, error) {
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
