@@ -23,7 +23,7 @@ var (
 
 func TestMain(m *testing.M) {
 	hasher := md5.New()
-	file, err := os.Open("client_test.go")
+	file, err := os.Open("client_impl_test.go")
 	if err != nil {
 		panic(err)
 	}
@@ -347,7 +347,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	if header.Filename != "client_test.go" {
+	if header.Filename != "client_impl_test.go" {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(&internalServerError)
 		return
@@ -366,7 +366,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 		Object:    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 		Bytes:     1024,
 		CreatedAt: 1700000000,
-		Filename:  "client_test.go",
+		Filename:  "client_impl_test.go",
 		Purpose:   purpose,
 	})
 }
@@ -387,7 +387,7 @@ func retrieveFileContent(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(&unauthorizedError)
 		return
 	}
-	file, _ := os.Open("client_test.go")
+	file, _ := os.Open("client_impl_test.go")
 	defer file.Close()
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
@@ -404,8 +404,8 @@ func (tc *testCaller) BaseUrl() string      { return tc.baseUrl }
 func (tc *testCaller) APIKey() string       { return tc.apiKey }
 func (tc *testCaller) Client() *http.Client { return tc.client }
 
-func newClient(key string) Client[*testCaller] {
-	return NewClient[*testCaller](&testCaller{
+func newClient(key string) BaseClient[*testCaller] {
+	return NewBaseClient[*testCaller](&testCaller{
 		baseUrl: testServer.URL + "/",
 		apiKey:  key,
 		client:  testServer.Client(),
@@ -743,7 +743,7 @@ func testClientImage(t *testing.T) {
 func testClientFile(t *testing.T) {
 	t.Run("upload", func(t *testing.T) {
 		client := newClient(testKey)
-		testFile, err := os.Open("client_test.go")
+		testFile, err := os.Open("client_impl_test.go")
 		if err != nil {
 			t.Errorf("os.Open: %s", err)
 			return
@@ -757,7 +757,7 @@ func testClientFile(t *testing.T) {
 			t.Errorf("client.UploadFile: %s", err)
 			return
 		}
-		if file.Filename != "client_test.go" || file.Purpose != "fine-tune" {
+		if file.Filename != "client_impl_test.go" || file.Purpose != "fine-tune" {
 			serialized, _ := json.Marshal(file)
 			t.Errorf("client.UploadFile: unexpected File object => %s", string(serialized))
 			return
