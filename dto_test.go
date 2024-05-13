@@ -123,6 +123,28 @@ func testTokenType(token json.Token, expect string) func(*testing.T) {
 	}
 }
 
+func TestStreamOptions(t *testing.T) {
+	encode := func(obj any) string {
+		b, err := json.Marshal(obj)
+		if err != nil {
+			panic(err)
+		}
+		return string(b)
+	}
+	wantOptions := map[string]any{
+		"include_usage": true,
+	}
+	wantOptionsJSON := encode(wantOptions)
+	gotOptions := StreamOptions{
+		StreamOptionIncludeUsage(true),
+	}
+	gotOptionsJSON := encode(gotOptions)
+	if gotOptionsJSON != wantOptionsJSON {
+		t.Errorf("stream_options: \nwant: %s\ngot: %s", wantOptionsJSON, gotOptionsJSON)
+		return
+	}
+}
+
 func TestDefProperty(t *testing.T) {
 	const jsonProperty = `
 	{

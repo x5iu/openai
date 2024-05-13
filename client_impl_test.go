@@ -102,12 +102,7 @@ func newTestServer() *httptest.Server {
 			Object:            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 			Created:           1700000000,
 			SystemFingerprint: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-			Choices: []struct {
-				Index        NullableType[int]    `json:"index"`
-				Message      *Message             `json:"message"`
-				FinishReason NullableType[string] `json:"finish_reason"`
-				Logprobs     json.RawMessage      `json:"logprobs"`
-			}{
+			Choices: Choices{
 				{
 					Index: "0",
 					Message: &Message{

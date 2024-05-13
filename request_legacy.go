@@ -3,8 +3,9 @@
 package openai
 
 import (
-	defc "github.com/x5iu/defc/runtime"
 	"io"
+
+	defc "github.com/x5iu/defc/runtime"
 )
 
 type UploadFile interface {
@@ -26,6 +27,7 @@ type ChatCompletionRequest struct {
 	Seed             int                   `json:"seed,omitempty"`
 	Stop             Stop                  `json:"stop,omitempty"`
 	Stream           bool                  `json:"stream,omitempty"`
+	StreamOptions    StreamOptions         `json:"stream_options,omitempty"`
 	Temperature      NullableType[float64] `json:"temperature,omitempty"`
 	TopP             NullableType[float64] `json:"top_p,omitempty"`
 	Tools            Tools                 `json:"tools,omitempty"`

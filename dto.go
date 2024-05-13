@@ -90,19 +90,37 @@ type ImageUrl struct {
 	Detail string `json:"detail,omitempty"`
 }
 
+type Choice struct {
+	Index        NullableType[int]    `json:"index"`
+	Message      *Message             `json:"message"`
+	Delta        *Message             `json:"delta"`
+	FinishReason NullableType[string] `json:"finish_reason"`
+	Logprobs     json.RawMessage      `json:"logprobs"`
+}
+
+type Choices []*Choice
+
+func (choices Choices) GetChoiceByIndex(idx int) *Choice {
+	// In stream mode, the choice with index=0 and the choice with index=1 appear alternately. They may
+	// be present in different chunks, which means that a chunk might only contain the choice with index=1
+	// and not include the choice with index=0. Therefore, we must individually determine what each specific
+	// choice's index value is.
+	for _, choice := range choices {
+		if choice.Index.Value() == idx {
+			return choice
+		}
+	}
+	return nil
+}
+
 type Completion struct {
-	ID                string `json:"id"`
-	Model             string `json:"model"`
-	Object            string `json:"object"`
-	Created           int    `json:"created"`
-	SystemFingerprint string `json:"system_fingerprint"`
-	Choices           []struct {
-		Index        NullableType[int]    `json:"index"`
-		Message      *Message             `json:"message"`
-		FinishReason NullableType[string] `json:"finish_reason"`
-		Logprobs     json.RawMessage      `json:"logprobs"`
-	} `json:"choices"`
-	Usage struct {
+	ID                string  `json:"id"`
+	Model             string  `json:"model"`
+	Object            string  `json:"object"`
+	Created           int     `json:"created"`
+	SystemFingerprint string  `json:"system_fingerprint"`
+	Choices           Choices `json:"choices"`
+	Usage             struct {
 		PromptTokens     int `json:"prompt_tokens"`
 		CompletionTokens int `json:"completion_tokens"`
 		TotalTokens      int `json:"total_tokens"`
@@ -116,10 +134,11 @@ func (c *Completion) Close() error {
 }
 
 func (c *Completion) GetMessageByIndex(idx int) (message *Message) {
-	if idx > len(c.Choices)-1 {
+	choice := c.Choices.GetChoiceByIndex(idx)
+	if choice == nil {
 		return new(Message)
 	}
-	return c.Choices[idx].Message
+	return choice.Message
 }
 
 func (c *Completion) GetMessageContentByIndex(idx int) string {
@@ -136,10 +155,11 @@ func (c *Completion) GetMessageRoleByIndex(idx int) string {
 }
 
 func (c *Completion) GetFinishReasonByIndex(idx int) string {
-	if idx > len(c.Choices)-1 {
+	choice := c.Choices.GetChoiceByIndex(idx)
+	if choice == nil {
 		return ""
 	}
-	if finishReason := c.Choices[idx].FinishReason; finishReason.IsNull() {
+	if finishReason := choice.FinishReason; finishReason.IsNull() {
 		return ""
 	} else {
 		return strings.TrimSpace(finishReason.Value())
@@ -161,24 +181,25 @@ func (c *Completion) GetCompletionTokens() int  { return c.Usage.CompletionToken
 func (c *Completion) GetTotalTokens() int       { return c.Usage.TotalTokens }
 
 type Chunk struct {
-	ID                string `json:"id"`
-	Model             string `json:"model"`
-	Object            string `json:"object"`
-	Created           int    `json:"created"`
-	SystemFingerprint string `json:"system_fingerprint"`
-	Choices           []struct {
-		Index        NullableType[int]    `json:"index"`
-		Delta        *Message             `json:"delta"`
-		FinishReason NullableType[string] `json:"finish_reason"`
-		Logprobs     json.RawMessage      `json:"logprobs"`
-	} `json:"choices"`
+	ID                string  `json:"id"`
+	Model             string  `json:"model"`
+	Object            string  `json:"object"`
+	Created           int     `json:"created"`
+	SystemFingerprint string  `json:"system_fingerprint"`
+	Choices           Choices `json:"choices"`
+	Usage             struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
+	} `json:"usage"`
 }
 
 func (c *Chunk) GetDeltaByIndex(idx int) (delta *Message) {
-	if idx > len(c.Choices)-1 {
+	choice := c.Choices.GetChoiceByIndex(idx)
+	if choice == nil {
 		return new(Message)
 	}
-	return c.Choices[idx].Delta
+	return choice.Delta
 }
 
 func (c *Chunk) GetDeltaContentByIndex(idx int) string {
@@ -195,10 +216,11 @@ func (c *Chunk) GetDeltaRoleByIndex(idx int) string {
 }
 
 func (c *Chunk) GetFinishReasonByIndex(idx int) string {
-	if idx > len(c.Choices)-1 {
+	choice := c.Choices.GetChoiceByIndex(idx)
+	if choice == nil {
 		return ""
 	}
-	if finishReason := c.Choices[idx].FinishReason; finishReason.IsNull() {
+	if finishReason := choice.FinishReason; finishReason.IsNull() {
 		return ""
 	} else {
 		return strings.TrimSpace(finishReason.Value())
@@ -390,6 +412,26 @@ func (InputString) input()       {}
 func (InputTokens) input()       {}
 func (InputStringsArray) input() {}
 func (InputTokensArray) input()  {}
+
+type StreamOption interface {
+	appendOptions(options map[string]any)
+}
+
+type StreamOptionIncludeUsage bool
+
+func (opt StreamOptionIncludeUsage) appendOptions(options map[string]any) {
+	options["include_usage"] = bool(opt)
+}
+
+type StreamOptions []StreamOption
+
+func (ss StreamOptions) MarshalJSON() ([]byte, error) {
+	options := make(map[string]any, len(ss))
+	for _, s := range ss {
+		s.appendOptions(options)
+	}
+	return json.Marshal(options)
+}
 
 type Map[T any] map[string]T
 
