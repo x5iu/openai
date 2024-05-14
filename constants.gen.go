@@ -27,6 +27,8 @@ const (
 	ModelGPT4Turbo20240409      = "gpt-4-turbo-2024-04-09"
 	ModelGPT4TurboPreview       = "gpt-4-turbo-preview"
 	ModelGPT4VisionPreview      = "gpt-4-vision-preview"
+	ModelGPT4O                  = "gpt-4o"
+	ModelGPT4O20240513          = "gpt-4o-2024-05-13"
 	ModelTextEmbedding3Large    = "text-embedding-3-large"
 	ModelTextEmbedding3Small    = "text-embedding-3-small"
 	ModelTextEmbeddingAda002    = "text-embedding-ada-002"
